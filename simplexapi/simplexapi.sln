@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30611.23
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "simplexapi", "simplexapi\simplexapi.csproj", "{8F003F5A-4A64-499F-B711-A026DE35CDCC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8F003F5A-4A64-499F-B711-A026DE35CDCC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8F003F5A-4A64-499F-B711-A026DE35CDCC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8F003F5A-4A64-499F-B711-A026DE35CDCC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8F003F5A-4A64-499F-B711-A026DE35CDCC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D63B84DE-BBD0-4309-A9E7-EB5397D8032B}
+	EndGlobalSection
+EndGlobal
