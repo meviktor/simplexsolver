@@ -6,6 +6,25 @@ namespace simplexapi.Common.Extensions
 {
     public static class EquationExtensions
     {
+        public static Equation ReplaceVarWithExpression(this Equation equation, Variable varToReplace, IEnumerable<Term> aliasExpr)
+        {
+            var foundOnLeft = equation.LeftSide.FirstOrDefault(term => term.Variable?.Equals(varToReplace) ?? false);
+            var foundOnRight = equation.RightSide.FirstOrDefault(term => term.Variable?.Equals(varToReplace) ?? false);
+
+            if (foundOnLeft != null)
+            {
+                equation.AddToLeft(new Term[] { new Term { SignedCoefficient = foundOnLeft.SignedCoefficient * -1, Variable = varToReplace } });
+                equation.AddToLeft(aliasExpr.Multiply(foundOnLeft.SignedCoefficient));
+            }
+            if(foundOnRight != null)
+            {
+                equation.AddToRight(new Term[] { new Term { SignedCoefficient = foundOnLeft.SignedCoefficient * -1, Variable = varToReplace } });
+                equation.AddToRight(aliasExpr.Multiply(foundOnRight.SignedCoefficient));
+            }
+
+            return equation;
+        }
+
         public static Equation Multiply(this Equation equation, int factor)
         {
             equation.LeftSide.ForAll(term => term.SignedCoefficient *= factor);
@@ -96,6 +115,48 @@ namespace simplexapi.Common.Extensions
             {
                 equation.RightSide = result; 
             }
+        }
+
+        public static Equation ChangeSides(this Equation equation)
+        {
+            var leftSideTemp = equation.LeftSide;
+
+            equation.LeftSide = equation.RightSide;
+            equation.RightSide = leftSideTemp;
+
+            return equation;
+        }
+
+        public static Equation DeepCopy(this Equation equation)
+        {
+            var leftSideCopy = new List<Term>();
+            foreach(var term in equation.LeftSide)
+            {
+                leftSideCopy.Add(new Term
+                {
+                    SignedCoefficient = term.SignedCoefficient,
+                    Variable = term.Variable
+                });
+            }
+
+            var sideConnectionCopy = equation.SideConnection;
+
+            var rightSideCopy = new List<Term>();
+            foreach (var term in equation.RightSide)
+            {
+                rightSideCopy.Add(new Term
+                {
+                    SignedCoefficient = term.SignedCoefficient,
+                    Variable = term.Variable
+                });
+            }
+
+            return new Equation
+            {
+                LeftSide = leftSideCopy,
+                SideConnection = sideConnectionCopy,
+                RightSide = rightSideCopy
+            };
         }
     }
 }

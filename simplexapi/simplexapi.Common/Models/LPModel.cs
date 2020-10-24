@@ -48,7 +48,9 @@ namespace simplexapi.Common.Models
         public IList<Variable> AllVariables { get; set; }
         public IList<Equation> Constraints { get; set; }
         public IList<Equation> InterpretationRanges { get; set; }
+        public IList<Equation> StandardFormAliases { get; set; }
         public Objective Objective { get; set; }
+        public Objective TmpObjective { get; set; }
 
         public override string ToString()
         {

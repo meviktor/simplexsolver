@@ -1,4 +1,5 @@
-﻿using System;
+﻿using simplexapi.Common.Models;
+using System;
 using System.Collections.Generic;
 
 namespace simplexapi.Common.Extensions
@@ -15,6 +16,12 @@ namespace simplexapi.Common.Extensions
             {
                 action(element);
             }
+        }
+
+        public static IEnumerable<Term> Multiply(this IEnumerable<Term> expression, int factor)
+        {
+            expression.ForAll(term => term.SignedCoefficient *= factor);
+            return expression;
         }
     }
 }
