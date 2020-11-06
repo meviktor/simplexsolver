@@ -6,6 +6,11 @@ namespace simplexapi.Common.Extensions
 {
     public static class LPModelExtensions
     {
+        /// <summary>
+        /// Turns the LP model into standard form, so the model contains only inequations with <= direction, uses variables having zero lower bound and the aim is maximizing the objective functions value.
+        /// </summary>
+        /// <param name="model">The LP model wanted to be transformed to standard form.</param>
+        /// <returns>The LP model itself in standard form.</returns>
         public static LPModel AsStandard(this LPModel model)
         {
             #region transforming equations to inequations
@@ -122,6 +127,12 @@ namespace simplexapi.Common.Extensions
             return model;
         }
 
+        /// <summary>
+        /// This function transfers the LP model to dictionary form - the left sides of the constraints will contain the basic variables, the right side the "rest" of the constraint.
+        /// The constants on the right side are the values of the basic variables. The constant in the objective function is the value wanted to be maximized.
+        /// </summary>
+        /// <param name="model">The LP model wanted to be transformed to dictionary form.</param>
+        /// <returns>The LP model itself in dictionary format.</returns>
         public static LPModel AsDictionary(this LPModel model)
         {
             foreach(var constraint in model.Constraints)
@@ -219,6 +230,11 @@ namespace simplexapi.Common.Extensions
             return false;
         }
 
+        /// <summary>
+        /// Changes the LP models optimization aim to maximize.
+        /// </summary>
+        /// <param name="model">The LP model whose optimization aim will be changed.</param>
+        /// <returns>The LP model having a maximizing optimization aim.</returns>
         private static LPModel ChangeOptimizationAimToMaximize(this LPModel model)
         {
             if (model.Objective.Aim == OptimizationAim.Minimize)
@@ -231,6 +247,11 @@ namespace simplexapi.Common.Extensions
             return model;
         }
 
+        /// <summary>
+        /// Searhes for variables having non-zero limit or having no limit at all.
+        /// </summary>
+        /// <param name="model">The LP model in which the search is executed.</param>
+        /// <returns>A dictionary contains the variables as key and their interpretation range as value.</returns>
         private static Dictionary<Variable, Equation> FindVariablesWithNoLimitOrNonZeroLimit(this LPModel model)
         {
             var result = new Dictionary<Variable, Equation>();

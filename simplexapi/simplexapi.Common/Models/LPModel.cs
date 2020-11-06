@@ -58,16 +58,12 @@ namespace simplexapi.Common.Models
 
             foreach(var constraint in Constraints)
             {
-                lpModelAsString.Append(constraint);
-                lpModelAsString.Append(Environment.NewLine);
+                lpModelAsString.Append($"{constraint}{Environment.NewLine}");
             }
-            lpModelAsString.Append("----");
-            lpModelAsString.Append(Environment.NewLine);
+            lpModelAsString.Append($"----{Environment.NewLine}");
 
-            lpModelAsString.Append(Objective.Function);
-            lpModelAsString.Append(Environment.NewLine);
-            lpModelAsString.Append("----");
-            lpModelAsString.Append(Environment.NewLine);
+            lpModelAsString.Append($"{Objective.Function}{Environment.NewLine}");
+            lpModelAsString.Append($"----{Environment.NewLine}");
 
             lpModelAsString.Append("Interpretation ranges: ");
             for (int i = 0; i < InterpretationRanges.Count(); i++)
@@ -96,8 +92,7 @@ namespace simplexapi.Common.Models
                 }
             }
             lpModelAsString.Append(Environment.NewLine);
-            lpModelAsString.Append("----");
-            lpModelAsString.Append(Environment.NewLine);
+            lpModelAsString.Append($"----{Environment.NewLine}");
 
             return lpModelAsString.ToString();
         }
