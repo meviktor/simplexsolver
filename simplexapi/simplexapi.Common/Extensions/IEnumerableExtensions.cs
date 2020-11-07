@@ -30,7 +30,7 @@ namespace simplexapi.Common.Extensions
         /// <param name="expression">The expression wanted to be multiplied.</param>
         /// <param name="factor">The multiplication factor.</param>
         /// <returns>The result of the operation.</returns>
-        public static IEnumerable<Term> Multiply(this IEnumerable<Term> expression, int factor)
+        public static IEnumerable<Term> Multiply(this IEnumerable<Term> expression, double factor)
         {
             expression.ForAll(term => term.SignedCoefficient *= factor);
             return expression;

@@ -35,6 +35,8 @@ namespace simplexapi.Common.Models
             }
         }
 
+        public double FunctionValue => _function.RightSide.Where(term => !term.Variable.HasValue).SingleOrDefault()?.SignedCoefficient ?? 0;
+
         public Objective(OptimizationAim aim, Equation function)
         {
             Aim = aim;

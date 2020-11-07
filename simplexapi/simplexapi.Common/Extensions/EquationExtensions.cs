@@ -25,7 +25,7 @@ namespace simplexapi.Common.Extensions
             return equation;
         }
 
-        public static Equation Multiply(this Equation equation, int factor)
+        public static Equation Multiply(this Equation equation, double factor)
         {
             equation.LeftSide.ForAll(term => term.SignedCoefficient *= factor);
             equation.RightSide.ForAll(term => term.SignedCoefficient *= factor);

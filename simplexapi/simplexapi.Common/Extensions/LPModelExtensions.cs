@@ -1,4 +1,5 @@
-﻿using simplexapi.Common.Models;
+﻿using simplexapi.Common.Exceptions;
+using simplexapi.Common.Models;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,6 +7,33 @@ namespace simplexapi.Common.Extensions
 {
     public static class LPModelExtensions
     {
+        /// <summary>
+        /// This function runs the two-phase simplex algoritm on the given LP model.
+        /// </summary>
+        /// <param name="model">The LP model on which the algorithm will be executed.</param>
+        /// <returns>The LP model in dictionary form with an optimal solution if any.</returns>
+        /// <exception cref="SimplexAlgorithmExectionException">When the algorithm cannot return an optimal solution.</exception>
+        public static LPModel TwoPhaseSimplex(this LPModel model)
+        {
+            model.AsStandard().AsDictionary();
+
+            if (model.FirstPhaseNeeded())
+            {
+                model.BackToStandardFromDictionary()
+                     .ToFirstPhaseDictionaryForm()
+                     .RunSimplex();
+
+                if (model.Objective.FunctionValue != 0)
+                {
+                    throw new SimplexAlgorithmExectionException(SimplexAlgorithmExectionErrorType.NoSolution);
+                }
+
+                model.ToSecondPhaseDictionaryForm();
+            }
+
+            return model.RunSimplex();
+        }
+
         /// <summary>
         /// Turns the LP model into standard form, so the model contains only inequations with <= direction, uses variables having zero lower bound and the aim is maximizing the objective functions value.
         /// </summary>
@@ -135,11 +163,11 @@ namespace simplexapi.Common.Extensions
         /// <returns>The LP model itself in dictionary format.</returns>
         public static LPModel AsDictionary(this LPModel model)
         {
-            foreach(var constraint in model.Constraints)
+            foreach (var constraint in model.Constraints)
             {
                 var newSlackVariable = new Variable { Name = model.AllVariables.First().Name, Index = model.AllVariables.Max(var => var.Index) + 1 };
                 // this line transfers the terms of the left side to the right side
-                constraint.Add(constraint.DeepCopy().Multiply(-1).LeftSide);
+                constraint.Add(constraint.DeepCopy().LeftSide.Multiply(-1));
                 constraint.AddToLeft(new Term[] { new Term { SignedCoefficient = 1, Variable = newSlackVariable } });
                 constraint.SideConnection = SideConnection.Equal;
 
@@ -151,83 +179,171 @@ namespace simplexapi.Common.Extensions
         }
 
         /// <summary>
-        /// This function determines if we need to execute the first phase of the two-phase simplex algorithm or not.
-        /// If so, as a side effect the function transforms the LP model to a dictionary form on which the first phase can be executed.
-        /// If not, the function does not modify the LP model. In this case we have to use <see cref="AsDictionary"/> extension method to transform the LP model to a dictionary form on which the second phase has to be executed.
+        /// This function transforms the LP model from dictionary from back to standard form.
+        /// This opertion is needed e.g. when one or more of the basis variables has/have a negative value thus the first phase must be executed.
+        /// </summary>
+        /// <param name="model">The LP model which will be transformed back to standard form.</param>
+        /// <returns>The LP model in standard form.</returns>
+        public static LPModel BackToStandardFromDictionary(this LPModel model)
+        {
+            for (int i = 0; i < model.Constraints.Count; ++i)
+            {
+                var constraint = model.Constraints[i];
+
+                var slackVariable = constraint.LeftSide.First().Variable.Value;
+                // the right side without the constant
+                var originalLeftSide = constraint.RightSide.Where(term => term.Variable.HasValue).Multiply(-1).ToList();
+                // the only constant term
+                var originalRightSide = constraint.RightSide.Where(term => !term.Variable.HasValue).ToList();
+                // left side <= right side
+                var originalSideConnection = SideConnection.LessThanOrEqual;
+
+                constraint = new Equation
+                {
+                    LeftSide = originalLeftSide,
+                    RightSide = originalRightSide,
+                    SideConnection = originalSideConnection
+                };
+
+                model.AllVariables.Remove(slackVariable);
+                model.InterpretationRanges.Remove(model.InterpretationRanges.Where(range => range.LeftSide.Any(term => term.Variable?.Equals(slackVariable) ?? false)).First());
+            }
+            return model;
+        }
+
+        /// <summary>
+        /// This function transforms the LP model to such a dictionary form on which the first phase of the two-phase simplex algorithm can be ececuted.
         /// </summary>
         /// <param name="model">The LP model.</param>
-        /// <returns>A first phase is needed or not.</returns>
-        public static bool TransformToHelperForm(this LPModel model)
+        /// <returns>The transformed LP model.</returns>
+        public static LPModel ToFirstPhaseDictionaryForm(this LPModel model)
         {
-            bool isDictionaryInValid = model.Constraints.Any(constraint => constraint.RightSide.Any(term => !term.Variable.HasValue && term.SignedCoefficient < 0));
-            if (isDictionaryInValid)
+            #region Adding -var0 to the left side of the constarints & the slack variables
+            var var0 = new Variable { Name = model.AllVariables.First().Name, Index = 0 };
+            model.AllVariables.Add(var0);
+
+            foreach (var constraint in model.Constraints)
             {
-                #region Adding -var0 to the left side of the constarints & the slack variables
-                var var0 = new Variable { Name = model.AllVariables.First().Name, Index = 0 };
-                model.AllVariables.Add(var0);
+                constraint.AddToLeft(new Term[] { new Term { SignedCoefficient = -1, Variable = var0 } });
 
-                foreach (var constraint in model.Constraints)
-                {
-                    constraint.AddToLeft(new Term[] { new Term { SignedCoefficient = -1, Variable = var0 } });
+                var newSlackVariable = new Variable { Name = model.AllVariables.First().Name, Index = model.AllVariables.Max(var => var.Index) + 1 };
+                model.AllVariables.Add(newSlackVariable);
 
-                    var newSlackVariable = new Variable { Name = model.AllVariables.First().Name, Index = model.AllVariables.Max(var => var.Index) + 1 };
-                    model.AllVariables.Add(newSlackVariable);
-
-                    constraint.AddToLeft(new Term[] { new Term { SignedCoefficient = 1, Variable = newSlackVariable } });
-                    constraint.SideConnection = SideConnection.Equal;
-                }
-                #endregion
-
-                #region Expressing the var0 variable from the constraint which has the most negative right side
-                var mostNegativeRightSidedConstraint = model.Constraints.OrderBy(constraint => constraint.RightSide.First(term => !term.Variable.HasValue).SignedCoefficient).First();
-                // on the right side there must be only one single constant (and nothing else) anyway so the predicate in the First() call is not necessary
-                var rightSideConstant = mostNegativeRightSidedConstraint.RightSide.First(term => !term.Variable.HasValue);
-
-                mostNegativeRightSidedConstraint.Add(new Term[] { new Term { SignedCoefficient = 1, Variable = var0 } });
-                mostNegativeRightSidedConstraint.Add(new Term[] { new Term { SignedCoefficient = rightSideConstant.SignedCoefficient * -1, Variable = rightSideConstant.Variable } });
-                mostNegativeRightSidedConstraint.ChangeSides();
-                #endregion
-
-                #region Expressing the slack variables from the other constraints and replacing var0-s with its equivalent expression got in the previous step
-                foreach (var constraint in model.Constraints)
-                {
-                    if (!constraint.Equals(mostNegativeRightSidedConstraint))
-                    {
-                        // we have added the slack variables to the constraints after the var0 and the decision variables - so the slack variable must have the highest index in the constraint
-                        var slackVariableTerm = constraint.LeftSide.OrderByDescending(term => term.Variable.Value.Index).First();
-                        var constantOnRight = constraint.RightSide.First(term => !term.Variable.HasValue);
-
-                        constraint.Add(new Term[] { new Term { SignedCoefficient = slackVariableTerm.SignedCoefficient * -1, Variable = slackVariableTerm.Variable } });
-                        constraint.Add(new Term[] { new Term { SignedCoefficient = constantOnRight.SignedCoefficient * -1 } });
-                        constraint.ChangeSides();
-
-                        // mostNegativeRightSidedConstraint shape is something like this: var0 = <expression on the right>
-                        constraint.ReplaceVarWithExpression(var0, mostNegativeRightSidedConstraint.RightSide);
-                    }
-                }
-                #endregion
-
-                #region Changing the objective function to -var0 (to its equivalent expression) and the optimization aim to maximize
-
-                #region Saving the old objective function to be able to write back after the fist phase of the simplex algorithm is done
-                model.TmpObjective = model.Objective;
-                #endregion
-
-                model.Objective = new Objective
-                (
-                    OptimizationAim.Maximize,
-                    new Equation
-                    {
-                        LeftSide = new Term[] { new Term { SignedCoefficient = 1, Variable = new Variable { Name = "w", Index = 0 } } },
-                        SideConnection = SideConnection.Equal,
-                        RightSide = mostNegativeRightSidedConstraint.DeepCopy().RightSide.Multiply(-1) as IList<Term>
-                    }
-                );
-                #endregion
-
-                return true;
+                constraint.AddToLeft(new Term[] { new Term { SignedCoefficient = 1, Variable = newSlackVariable } });
+                constraint.SideConnection = SideConnection.Equal;
             }
-            return false;
+            #endregion
+
+            #region Expressing the var0 variable from the constraint which has the most negative right side
+            var mostNegativeRightSidedConstraint = model.Constraints.OrderBy(constraint => constraint.RightSide.First(term => !term.Variable.HasValue).SignedCoefficient).First();
+            // on the right side there must be only one single constant (and nothing else) anyway so the predicate in the First() call is not necessary
+            var rightSideConstant = mostNegativeRightSidedConstraint.RightSide.First(term => !term.Variable.HasValue);
+
+            mostNegativeRightSidedConstraint.Add(new Term[] { new Term { SignedCoefficient = 1, Variable = var0 } });
+            mostNegativeRightSidedConstraint.Add(new Term[] { new Term { SignedCoefficient = rightSideConstant.SignedCoefficient * -1, Variable = rightSideConstant.Variable } });
+            mostNegativeRightSidedConstraint.ChangeSides();
+            #endregion
+
+            #region Expressing the slack variables from the other constraints and replacing var0-s with its equivalent expression got in the previous step
+            foreach (var constraint in model.Constraints)
+            {
+                if (!constraint.Equals(mostNegativeRightSidedConstraint))
+                {
+                    // we have added the slack variables to the constraints after the var0 and the decision variables - so the slack variable must have the highest index in the constraint
+                    var slackVariableTerm = constraint.LeftSide.OrderByDescending(term => term.Variable.Value.Index).First();
+                    var constantOnRight = constraint.RightSide.First(term => !term.Variable.HasValue);
+
+                    constraint.Add(new Term[] { new Term { SignedCoefficient = slackVariableTerm.SignedCoefficient * -1, Variable = slackVariableTerm.Variable } });
+                    constraint.Add(new Term[] { new Term { SignedCoefficient = constantOnRight.SignedCoefficient * -1 } });
+                    constraint.ChangeSides();
+
+                    // mostNegativeRightSidedConstraint shape is something like this: var0 = <expression on the right>
+                    constraint.ReplaceVarWithExpression(var0, mostNegativeRightSidedConstraint.RightSide);
+                }
+            }
+            #endregion
+
+            #region Changing the objective function to -var0 (to its equivalent expression) and the optimization aim to maximize
+
+            #region Saving the old objective function to be able to write back after the fist phase of the simplex algorithm is done
+            model.TmpObjective = model.Objective;
+            #endregion
+
+            model.Objective = new Objective
+               (
+                   OptimizationAim.Maximize,
+                   new Equation
+                   {
+                       LeftSide = new Term[] { new Term { SignedCoefficient = 1, Variable = new Variable { Name = "w", Index = 0 } } },
+                       SideConnection = SideConnection.Equal,
+                       RightSide = mostNegativeRightSidedConstraint.DeepCopy().RightSide.Multiply(-1) as IList<Term>
+                   }
+               );
+            #endregion
+
+            return model;
+        }
+        
+        /// <summary>
+        /// If there was a first phase and the optimum of the objective function was 0 the model should be transformed to such a dictionary form on which the second phase can be executed.
+        /// This function does the necessary changes on the model.
+        /// </summary>
+        /// <param name="model">The LP model wanted to be transformed to be eligible to the execution of the second phase.</param>
+        /// <returns>The transformed LP model.</returns>
+        public static LPModel ToSecondPhaseDictionaryForm(this LPModel model)
+        {
+            #region Throw out the 'var0 = 0' shaped constraint if any
+            var constraintToRemove = model.Constraints.Where(constraint => constraint.LeftSide.Count == 1 && constraint.LeftSide.Any(term => term.Variable.Value.Index == 0) &&
+                                                                           (constraint.RightSide.Count == 1 || constraint.RightSide.Any(term => !term.Variable.HasValue && term.SignedCoefficient == 0)) || constraint.RightSide.Count == 0)
+                                                      .FirstOrDefault();
+            if(constraintToRemove != null)
+            {
+                model.Constraints.Remove(constraintToRemove);
+            }
+            #endregion
+
+            #region If var0 is a basis variable it will be exchanged with a non-basis variable by a pivot step
+            var constraintWithVar0Basis = model.Constraints.Where(constraint => constraint.LeftSide.Count == 1 && constraint.LeftSide.Any(term => term.Variable.Value.Index == 0))
+                                                           .FirstOrDefault();
+            // Pivot step - TODO: organize this functionality to a seperate function
+            if (constraintToRemove != null)
+            {
+                var negatedVar0Term = new Term { SignedCoefficient = -1, Variable = new Variable { Name = model.AllVariables.First().Name, Index = 0 } };
+                var negatedNewBasisTerm = constraintWithVar0Basis.RightSide.Where(term => term.Variable.HasValue && term.SignedCoefficient < 0 && term.Variable.Value.Index == constraintWithVar0Basis.RightSide.Min(t => t.Variable.Value.Index)).First();
+                constraintWithVar0Basis.Add(new Term[] { negatedVar0Term, negatedNewBasisTerm });
+                constraintWithVar0Basis.Multiply(1 / constraintWithVar0Basis.LeftSide.First(term => term.Variable.Value.Index == negatedNewBasisTerm.Variable.Value.Index).SignedCoefficient);
+
+                foreach (var constraint in model.Constraints)
+                {
+                    if(constraint != constraintWithVar0Basis)
+                    {
+                        constraint.ReplaceVarWithExpression(negatedNewBasisTerm.Variable.Value, constraintWithVar0Basis.RightSide);
+                    }
+                }
+            }
+            #endregion
+
+            #region Throw out the rest of the var0 occurences
+            foreach(var constraint in model.Constraints)
+            {
+                var foundVar0 = constraint.RightSide.Where(term => term.Variable?.Equals(new Variable { Name = model.AllVariables.First().Name, Index = 0 }) ?? false).FirstOrDefault();
+                if (foundVar0 != null)
+                {
+                    constraint.RightSide.Remove(foundVar0);
+                }
+            }
+            #endregion
+
+            #region Set back the original objective function exhanging the basis variables with their equivaltent expressions from the dictionary (right sides)
+            model.Objective = model.TmpObjective;
+            foreach(var constraint in model.Constraints)
+            {
+                var basisVariable = constraint.LeftSide.First(term => term.Variable.HasValue).Variable.Value;
+                model.Objective.Function.ReplaceVarWithExpression(basisVariable, constraint.RightSide);
+            }
+            #endregion
+
+            return model;
         }
 
         /// <summary>
@@ -278,6 +394,26 @@ namespace simplexapi.Common.Extensions
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Decides wheter a first phase is needed or not on the current dictionary form LP model.
+        /// </summary>
+        /// <param name="model">The LP model in dictionary form.</param>
+        /// <returns>Wheter a first phase is needed or not.</returns>
+        private static bool FirstPhaseNeeded(this LPModel model)
+        {
+            return model.Constraints.Any(constraint => constraint.RightSide.Any(term => !term.Variable.HasValue && term.SignedCoefficient < 0));
+        }
+
+        /// <summary>
+        /// Runs the simplex algoritm on the given LP model.
+        /// </summary>
+        /// <param name="model">The LP model on which the simplex algoritm will be executed.</param>
+        /// <returns></returns>
+        private static LPModel RunSimplex(this LPModel model)
+        {
+            return model;
         }
     }
 }

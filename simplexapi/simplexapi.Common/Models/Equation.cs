@@ -27,7 +27,7 @@ namespace simplexapi.Common.Models
 
     public class Term
     {
-        public int SignedCoefficient { get; set; }
+        public double SignedCoefficient { get; set; }
         // if this field is null the term is a constant
         public Variable? Variable { get; set; }
 
