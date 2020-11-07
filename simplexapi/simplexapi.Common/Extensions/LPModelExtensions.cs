@@ -39,7 +39,7 @@ namespace simplexapi.Common.Extensions
         /// </summary>
         /// <param name="model">The LP model wanted to be transformed to standard form.</param>
         /// <returns>The LP model itself in standard form.</returns>
-        public static LPModel AsStandard(this LPModel model)
+        private static LPModel AsStandard(this LPModel model)
         {
             #region transforming equations to inequations
             var eqConstraints = model.Constraints.Where(constraint => constraint.SideConnection == SideConnection.Equal);
@@ -71,13 +71,13 @@ namespace simplexapi.Common.Extensions
             {
                 if(variableAndRange.Value != null)
                 {
-                    var newVariable = new Variable { Name = variableAndRange.Value.LeftSide.First().Variable.Value.Name, Index = model.AllVariables.Max(var => var.Index) + 1 };
+                    var newVariable = new Variable { Name = variableAndRange.Value.LeftSide.Single().Variable.Value.Name, Index = model.AllVariables.Max(var => var.Index) + 1 };
                     var alias = new Equation
                     {
                         // e.g. x1 = x2 + 3 (<var> = <var> <const>)
                         LeftSide = new Term[] { new Term { SignedCoefficient = 1, Variable = variableAndRange.Key } },
                         SideConnection = SideConnection.Equal,
-                        RightSide = new Term[] { new Term { SignedCoefficient = 1, Variable = newVariable }, variableAndRange.Value.RightSide.First() },
+                        RightSide = new Term[] { new Term { SignedCoefficient = 1, Variable = newVariable }, variableAndRange.Value.RightSide.Single() },
                     };
 
                     model.AllVariables.Add(newVariable);
@@ -88,17 +88,7 @@ namespace simplexapi.Common.Extensions
                     // searching for the badly limited variable in the constraints and replacing them with the new one
                     foreach(var constraint in model.Constraints)
                     {
-                        var foundOccurecne = constraint.LeftSide.FirstOrDefault(term => term.Variable?.Equals(variableAndRange.Key) ?? false);
-                        if(foundOccurecne != null)
-                        {
-                            // multiply the alias with the coefficient of the original decision variable
-                            var multipliedAlias = new Term[] { new Term { SignedCoefficient = foundOccurecne.SignedCoefficient, Variable = newVariable }, new Term { SignedCoefficient = variableAndRange.Value.RightSide.First().SignedCoefficient * foundOccurecne.SignedCoefficient } };
-
-                            var transorm = multipliedAlias.ToList();
-                            transorm.Add(new Term { SignedCoefficient = foundOccurecne.SignedCoefficient * -1, Variable = foundOccurecne.Variable });
-
-                            constraint.Add(transorm);
-                        }
+                        constraint.ReplaceVarWithExpression(variableAndRange.Key, alias.RightSide);
                     }
                 }
                 else
@@ -122,30 +112,14 @@ namespace simplexapi.Common.Extensions
                     // searching for the limitless variable in the constraints and replacing them with the new expression
                     foreach (var constraint in model.Constraints)
                     {
-                        var foundOccurecne = constraint.LeftSide.FirstOrDefault(term => term.Variable?.Equals(variableAndRange.Key) ?? false);
-                        if (foundOccurecne != null)
-                        {
-                            // multiply the alias with the coefficient of the original decision variable
-                            var multipliedAlias = new Term[] { new Term { SignedCoefficient = foundOccurecne.SignedCoefficient, Variable = newVariable1 }, new Term { SignedCoefficient = foundOccurecne.SignedCoefficient * -1, Variable = newVariable2 } };
-
-                            var transorm = multipliedAlias.ToList();
-                            transorm.Add(new Term { SignedCoefficient = foundOccurecne.SignedCoefficient * -1, Variable = foundOccurecne.Variable });
-
-                            constraint.Add(transorm);
-                        }
+                        constraint.ReplaceVarWithExpression(variableAndRange.Key, alias.RightSide);
                     }
                 }
             }
             #endregion
 
             #region transforming inequations with constraint >= to new ones having the constraint <=
-            foreach (var constraint in model.Constraints)
-            {
-                if(constraint.SideConnection == SideConnection.GreaterThanOrEqual)
-                {
-                    constraint.Multiply(-1);
-                }
-            }
+            model.Constraints.Where(constraint => constraint.SideConnection == SideConnection.GreaterThanOrEqual).ForAll(constraint => constraint.Multiply(-1));
             #endregion
 
             #region changing the optimization aim to max if it was min
@@ -161,9 +135,9 @@ namespace simplexapi.Common.Extensions
         /// </summary>
         /// <param name="model">The LP model wanted to be transformed to dictionary form.</param>
         /// <returns>The LP model itself in dictionary format.</returns>
-        public static LPModel AsDictionary(this LPModel model)
+        private static LPModel AsDictionary(this LPModel model)
         {
-            foreach (var constraint in model.Constraints)
+            model.Constraints.ForAll(constraint =>
             {
                 var newSlackVariable = new Variable { Name = model.AllVariables.First().Name, Index = model.AllVariables.Max(var => var.Index) + 1 };
                 // this line transfers the terms of the left side to the right side
@@ -173,7 +147,7 @@ namespace simplexapi.Common.Extensions
 
                 model.AllVariables.Add(newSlackVariable);
                 model.InterpretationRanges.Add(newSlackVariable.GreaterOrEqualThenZeroRange());
-            }
+            });
 
             return model;
         }
@@ -184,13 +158,13 @@ namespace simplexapi.Common.Extensions
         /// </summary>
         /// <param name="model">The LP model which will be transformed back to standard form.</param>
         /// <returns>The LP model in standard form.</returns>
-        public static LPModel BackToStandardFromDictionary(this LPModel model)
+        private static LPModel BackToStandardFromDictionary(this LPModel model)
         {
             for (int i = 0; i < model.Constraints.Count; ++i)
             {
                 var constraint = model.Constraints[i];
 
-                var slackVariable = constraint.LeftSide.First().Variable.Value;
+                var slackVariable = constraint.LeftSide.Single().Variable.Value;
                 // the right side without the constant
                 var originalLeftSide = constraint.RightSide.Where(term => term.Variable.HasValue).Multiply(-1).ToList();
                 // the only constant term
@@ -206,7 +180,7 @@ namespace simplexapi.Common.Extensions
                 };
 
                 model.AllVariables.Remove(slackVariable);
-                model.InterpretationRanges.Remove(model.InterpretationRanges.Where(range => range.LeftSide.Any(term => term.Variable?.Equals(slackVariable) ?? false)).First());
+                model.InterpretationRanges.Remove(model.InterpretationRanges.Where(range => range.LeftSide.Any(term => term.Variable?.Equals(slackVariable) ?? false)).Single());
             }
             return model;
         }
@@ -216,13 +190,13 @@ namespace simplexapi.Common.Extensions
         /// </summary>
         /// <param name="model">The LP model.</param>
         /// <returns>The transformed LP model.</returns>
-        public static LPModel ToFirstPhaseDictionaryForm(this LPModel model)
+        private static LPModel ToFirstPhaseDictionaryForm(this LPModel model)
         {
             #region Adding -var0 to the left side of the constarints & the slack variables
             var var0 = new Variable { Name = model.AllVariables.First().Name, Index = 0 };
             model.AllVariables.Add(var0);
 
-            foreach (var constraint in model.Constraints)
+            model.Constraints.ForAll(constraint =>
             {
                 constraint.AddToLeft(new Term[] { new Term { SignedCoefficient = -1, Variable = var0 } });
 
@@ -231,13 +205,13 @@ namespace simplexapi.Common.Extensions
 
                 constraint.AddToLeft(new Term[] { new Term { SignedCoefficient = 1, Variable = newSlackVariable } });
                 constraint.SideConnection = SideConnection.Equal;
-            }
+            });
             #endregion
 
             #region Expressing the var0 variable from the constraint which has the most negative right side
-            var mostNegativeRightSidedConstraint = model.Constraints.OrderBy(constraint => constraint.RightSide.First(term => !term.Variable.HasValue).SignedCoefficient).First();
+            var mostNegativeRightSidedConstraint = model.Constraints.OrderBy(constraint => constraint.RightSide.Single(term => !term.Variable.HasValue).SignedCoefficient).First();
             // on the right side there must be only one single constant (and nothing else) anyway so the predicate in the First() call is not necessary
-            var rightSideConstant = mostNegativeRightSidedConstraint.RightSide.First(term => !term.Variable.HasValue);
+            var rightSideConstant = mostNegativeRightSidedConstraint.RightSide.Single(term => !term.Variable.HasValue);
 
             mostNegativeRightSidedConstraint.Add(new Term[] { new Term { SignedCoefficient = 1, Variable = var0 } });
             mostNegativeRightSidedConstraint.Add(new Term[] { new Term { SignedCoefficient = rightSideConstant.SignedCoefficient * -1, Variable = rightSideConstant.Variable } });
@@ -251,7 +225,7 @@ namespace simplexapi.Common.Extensions
                 {
                     // we have added the slack variables to the constraints after the var0 and the decision variables - so the slack variable must have the highest index in the constraint
                     var slackVariableTerm = constraint.LeftSide.OrderByDescending(term => term.Variable.Value.Index).First();
-                    var constantOnRight = constraint.RightSide.First(term => !term.Variable.HasValue);
+                    var constantOnRight = constraint.RightSide.Single(term => !term.Variable.HasValue);
 
                     constraint.Add(new Term[] { new Term { SignedCoefficient = slackVariableTerm.SignedCoefficient * -1, Variable = slackVariableTerm.Variable } });
                     constraint.Add(new Term[] { new Term { SignedCoefficient = constantOnRight.SignedCoefficient * -1 } });
@@ -290,12 +264,12 @@ namespace simplexapi.Common.Extensions
         /// </summary>
         /// <param name="model">The LP model wanted to be transformed to be eligible to the execution of the second phase.</param>
         /// <returns>The transformed LP model.</returns>
-        public static LPModel ToSecondPhaseDictionaryForm(this LPModel model)
+        private static LPModel ToSecondPhaseDictionaryForm(this LPModel model)
         {
             #region Throw out the 'var0 = 0' shaped constraint if any
             var constraintToRemove = model.Constraints.Where(constraint => constraint.LeftSide.Count == 1 && constraint.LeftSide.Any(term => term.Variable.Value.Index == 0) &&
                                                                            (constraint.RightSide.Count == 1 || constraint.RightSide.Any(term => !term.Variable.HasValue && term.SignedCoefficient == 0)) || constraint.RightSide.Count == 0)
-                                                      .FirstOrDefault();
+                                                      .SingleOrDefault();
             if(constraintToRemove != null)
             {
                 model.Constraints.Remove(constraintToRemove);
@@ -304,43 +278,39 @@ namespace simplexapi.Common.Extensions
 
             #region If var0 is a basis variable it will be exchanged with a non-basis variable by a pivot step
             var constraintWithVar0Basis = model.Constraints.Where(constraint => constraint.LeftSide.Count == 1 && constraint.LeftSide.Any(term => term.Variable.Value.Index == 0))
-                                                           .FirstOrDefault();
+                                                           .SingleOrDefault();
             // Pivot step - TODO: organize this functionality to a seperate function
             if (constraintToRemove != null)
             {
                 var negatedVar0Term = new Term { SignedCoefficient = -1, Variable = new Variable { Name = model.AllVariables.First().Name, Index = 0 } };
-                var negatedNewBasisTerm = constraintWithVar0Basis.RightSide.Where(term => term.Variable.HasValue && term.SignedCoefficient < 0 && term.Variable.Value.Index == constraintWithVar0Basis.RightSide.Min(t => t.Variable.Value.Index)).First();
+                // choosing the variable has a negative coefficient and the smallest index
+                var negatedNewBasisTerm = constraintWithVar0Basis.RightSide.Where(term => term.Variable.Value.Index == constraintWithVar0Basis.RightSide.Where(t => t.Variable.HasValue && t.SignedCoefficient < 0).Min(t => t.Variable.Value.Index)).Single();
                 constraintWithVar0Basis.Add(new Term[] { negatedVar0Term, negatedNewBasisTerm });
                 constraintWithVar0Basis.Multiply(1 / constraintWithVar0Basis.LeftSide.First(term => term.Variable.Value.Index == negatedNewBasisTerm.Variable.Value.Index).SignedCoefficient);
 
-                foreach (var constraint in model.Constraints)
-                {
-                    if(constraint != constraintWithVar0Basis)
-                    {
-                        constraint.ReplaceVarWithExpression(negatedNewBasisTerm.Variable.Value, constraintWithVar0Basis.RightSide);
-                    }
-                }
+                model.Constraints.Where(constraint => constraint != constraintWithVar0Basis)
+                    .ForAll(constraint => constraint.ReplaceVarWithExpression(negatedNewBasisTerm.Variable.Value, constraintWithVar0Basis.RightSide));
             }
             #endregion
 
             #region Throw out the rest of the var0 occurences
-            foreach(var constraint in model.Constraints)
+            model.Constraints.ForAll(constraint =>
             {
-                var foundVar0 = constraint.RightSide.Where(term => term.Variable?.Equals(new Variable { Name = model.AllVariables.First().Name, Index = 0 }) ?? false).FirstOrDefault();
+                var foundVar0 = constraint.RightSide.Where(term => term.Variable?.Equals(new Variable { Name = model.AllVariables.First().Name, Index = 0 }) ?? false).SingleOrDefault();
                 if (foundVar0 != null)
                 {
                     constraint.RightSide.Remove(foundVar0);
                 }
-            }
+            });
             #endregion
 
             #region Set back the original objective function exhanging the basis variables with their equivaltent expressions from the dictionary (right sides)
             model.Objective = model.TmpObjective;
-            foreach(var constraint in model.Constraints)
+            model.Constraints.ForAll(constraint =>
             {
-                var basisVariable = constraint.LeftSide.First(term => term.Variable.HasValue).Variable.Value;
+                var basisVariable = constraint.LeftSide.Single(term => term.Variable.HasValue).Variable.Value;
                 model.Objective.Function.ReplaceVarWithExpression(basisVariable, constraint.RightSide);
-            }
+            });
             #endregion
 
             return model;
@@ -358,7 +328,7 @@ namespace simplexapi.Common.Extensions
                 model.Objective.Aim = OptimizationAim.Maximize;
                 model.Objective.Function.Multiply(-1);
                 // multiplying both sides of the function adds a minus sign (-) prefix to to funtion name - we don't want to leave this
-                model.Objective.Function.LeftSide.First().SignedCoefficient *= -1;
+                model.Objective.Function.LeftSide.Single().SignedCoefficient *= -1;
             }
             return model;
         }
@@ -386,8 +356,8 @@ namespace simplexapi.Common.Extensions
                 {
                     // variable with non-zero lower limit
                     var interpretationRangeOfVariable = model.InterpretationRanges
-                        .Where(range => (range.LeftSide.First().Variable.Value.Name == variable.Name && range.LeftSide.First().Variable.Value.Index == variable.Index) && // the variable can be found
-                                        (!range.RightSide.First().Variable.HasValue && range.RightSide.First().SignedCoefficient != 0)) // the limit is a non-zero constant
+                        .Where(range => (range.LeftSide.Single().Variable.Value.Equals(variable)) && // the variable can be found
+                                        (!range.RightSide.Single().Variable.HasValue && range.RightSide.Single().SignedCoefficient != 0)) // the limit is a non-zero constant
                         .First();
                     result.Add(variable, interpretationRangeOfVariable);
                 }

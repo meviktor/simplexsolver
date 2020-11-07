@@ -8,8 +8,8 @@ namespace simplexapi.Common.Extensions
     {
         public static Equation ReplaceVarWithExpression(this Equation equation, Variable varToReplace, IEnumerable<Term> aliasExpr)
         {
-            var foundOnLeft = equation.LeftSide.FirstOrDefault(term => term.Variable?.Equals(varToReplace) ?? false);
-            var foundOnRight = equation.RightSide.FirstOrDefault(term => term.Variable?.Equals(varToReplace) ?? false);
+            var foundOnLeft = equation.LeftSide.SingleOrDefault(term => term.Variable?.Equals(varToReplace) ?? false);
+            var foundOnRight = equation.RightSide.SingleOrDefault(term => term.Variable?.Equals(varToReplace) ?? false);
 
             if (foundOnLeft != null)
             {
