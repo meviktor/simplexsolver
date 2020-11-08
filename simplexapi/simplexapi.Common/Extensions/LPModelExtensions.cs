@@ -1,10 +1,14 @@
 ﻿using simplexapi.Common.Exceptions;
 using simplexapi.Common.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace simplexapi.Common.Extensions
 {
+    /// <summary>
+    /// Constains extension methods for running the two-phase simplex algoritm on a LP model.
+    /// </summary>
     public static class LPModelExtensions
     {
         /// <summary>
@@ -32,6 +36,73 @@ namespace simplexapi.Common.Extensions
             }
 
             return model.RunSimplex();
+        }
+
+        /// <summary>
+        /// Reads the solution from the dictionary.
+        /// </summary>
+        /// <param name="model">The LP model.</param>
+        /// <returns>A <see cref="SimplexSolutionDto"></see> containing the solution. </returns>
+        public static SimplexSolutionDto GetSolutionFromDictionary(this LPModel model)
+        {
+            var decisionVariableValues = new Dictionary<Variable, double>();
+
+            model.DecisionVariables.ForAll(decisionVariable =>
+            {
+                Func<Equation, Variable, bool> leftSideVariable = (equation, variable) => equation.LeftSide.Single().Variable?.Equals(variable) ?? false;
+                bool isBasisVariable = model.Constraints.Any(constraint => leftSideVariable(constraint, decisionVariable));
+
+                // value of a basis variable: the constant of its equation/constraint
+                if (isBasisVariable)
+                {
+                    double value = model.Constraints.Single(constraint => leftSideVariable(constraint, decisionVariable)).RightSide.Single(term => !term.Variable.HasValue).SignedCoefficient;
+                    decisionVariableValues.Add(decisionVariable, value);
+                }
+                else
+                {
+                    bool isExpressedByOtherVariables = model.StandardFormAliases.Any(aliasExpr => leftSideVariable(aliasExpr, decisionVariable));
+                    // does not appear in the dictionary - was exchanged with an expression with new variables when the model was transformed into standard form in the beginning
+                    if (isExpressedByOtherVariables)
+                    {
+                        var variableAlias = model.StandardFormAliases.Single(aliasExpr => leftSideVariable(aliasExpr, decisionVariable));
+                        var dependentVariables = variableAlias.RightSide.Where(term => term.Variable.HasValue).Select(term => term.Variable.Value);
+                        var dependentVariablesAndValues = new Dictionary<Variable, double>();
+
+                        dependentVariables.ForAll(dependentVariable =>
+                        {
+                            bool isDependentVariableInBasis = model.Constraints.Any(constraint => leftSideVariable(constraint, dependentVariable));
+                            if (isDependentVariableInBasis)
+                            {
+                                double dependentVarValue = model.Constraints.Single(constraint => leftSideVariable(constraint, dependentVariable)).RightSide.Single(term => !term.Variable.HasValue).SignedCoefficient;
+                                dependentVariablesAndValues.Add(dependentVariable, dependentVarValue);
+                            }
+                            else
+                            {
+                                dependentVariablesAndValues.Add(dependentVariable, 0);
+                            }
+                        });
+
+                        // replace the variables in the alias expression with their value so we can get a numeric value for the original decision variable
+                        double valueOfVariableAlias = 0;
+                        variableAlias.RightSide.ForAll(term =>
+                        {
+                            double termValue = term.Variable.HasValue ?
+                                term.SignedCoefficient * dependentVariablesAndValues.Single(kv => kv.Key.Equals(term.Variable.Value)).Value :
+                                term.SignedCoefficient;
+                            valueOfVariableAlias += termValue;
+                        });
+
+                        decisionVariableValues.Add(decisionVariable, valueOfVariableAlias);
+                    }
+                    // non-basis variable
+                    else
+                    {
+                        decisionVariableValues.Add(decisionVariable, 0);
+                    }
+                }
+            });
+
+            return new SimplexSolutionDto(model.Objective.FunctionValue, decisionVariableValues);
         }
 
         /// <summary>
@@ -279,17 +350,18 @@ namespace simplexapi.Common.Extensions
             #region If var0 is a basis variable it will be exchanged with a non-basis variable by a pivot step
             var constraintWithVar0Basis = model.Constraints.Where(constraint => constraint.LeftSide.Count == 1 && constraint.LeftSide.Any(term => term.Variable.Value.Index == 0))
                                                            .SingleOrDefault();
-            // Pivot step - TODO: organize this functionality to a seperate function
+            
             if (constraintToRemove != null)
             {
-                var negatedVar0Term = new Term { SignedCoefficient = -1, Variable = new Variable { Name = model.AllVariables.First().Name, Index = 0 } };
+                var var0 = new Variable { Name = model.AllVariables.First().Name, Index = 0 };
                 // choosing the variable has a negative coefficient and the smallest index
-                var negatedNewBasisTerm = constraintWithVar0Basis.RightSide.Where(term => term.Variable.Value.Index == constraintWithVar0Basis.RightSide.Where(t => t.Variable.HasValue && t.SignedCoefficient < 0).Min(t => t.Variable.Value.Index)).Single();
-                constraintWithVar0Basis.Add(new Term[] { negatedVar0Term, negatedNewBasisTerm });
-                constraintWithVar0Basis.Multiply(1 / constraintWithVar0Basis.LeftSide.First(term => term.Variable.Value.Index == negatedNewBasisTerm.Variable.Value.Index).SignedCoefficient);
+                var newBasisVariable = constraintWithVar0Basis.RightSide
+                    .Where(term => term.Variable.Value.Index == constraintWithVar0Basis.RightSide
+                        .Where(t => t.Variable.HasValue && t.SignedCoefficient < 0)
+                        .Min(t => t.Variable.Value.Index))
+                    .Single().Variable.Value;
 
-                model.Constraints.Where(constraint => constraint != constraintWithVar0Basis)
-                    .ForAll(constraint => constraint.ReplaceVarWithExpression(negatedNewBasisTerm.Variable.Value, constraintWithVar0Basis.RightSide));
+                model.MakePivotStep(newBasisVariable, var0, withoutObjectiveFunction: true);
             }
             #endregion
 
@@ -381,8 +453,90 @@ namespace simplexapi.Common.Extensions
         /// </summary>
         /// <param name="model">The LP model on which the simplex algoritm will be executed.</param>
         /// <returns></returns>
+        /// <exception cref="SimplexAlgorithmExectionException"></exception>
         private static LPModel RunSimplex(this LPModel model)
         {
+            while (!model.AllObjectiveFunctionVariableHasNegativeCoefficient())
+            {
+                #region Choosing new basis variable by Bland - let1s name its index as k
+                var kIndex = model.Objective.Function.RightSide.Where(term => term.Variable.HasValue && term.SignedCoefficient > 0).Min(term => term.Variable.Value.Index);
+                var stepInVariable = model.Objective.Function.RightSide.Where(term => term.Variable.Value.Index == kIndex).Single().Variable.Value;
+                #endregion
+
+                #region All k-indexed variable has positive coefficient in the constraints? YES - stop, no limit, NO - continue
+                Func<Term, bool> hasKIndex = term => term.Variable?.Equals(stepInVariable) ?? false;
+                IEnumerable<Term> termsWithKIndexedVariables = model.Constraints.Where(constraint => constraint.RightSide.Any(term => hasKIndex(term)))
+                    .Select(constraint => constraint.RightSide.Where(term => hasKIndex(term)).Single());
+
+                bool allKIndexedHasPositiveIndex = termsWithKIndexedVariables.All(term => term.SignedCoefficient > 0);
+                if (allKIndexedHasPositiveIndex)
+                {
+                    throw new SimplexAlgorithmExectionException(SimplexAlgorithmExectionErrorType.NotLimited);
+                }
+                #endregion
+
+                #region Determining the variable which will leave the base by finding the smallest quotient
+                Equation selectedConstraint = null;
+                double smallestQuotient = double.MaxValue;
+                model.Constraints.Where(constraint => constraint.RightSide.Any(term => hasKIndex(term) && term.SignedCoefficient < 0))
+                    .ForAll(constraint =>
+                    {
+                    // This value must be positive - if not the dictionary were not valid
+                    var constraintsConstantValue = constraint.RightSide.Where(term => !term.Variable.HasValue).Single().SignedCoefficient;
+                        var kIndexedVariablesCoefficient = constraint.RightSide.Where(term => hasKIndex(term)).Single().SignedCoefficient;
+
+                        var smallestQuotientFound = constraintsConstantValue / Math.Abs(kIndexedVariablesCoefficient) < smallestQuotient;
+                        if (smallestQuotientFound)
+                        {
+                            selectedConstraint = constraint;
+                            smallestQuotient = constraintsConstantValue / Math.Abs(kIndexedVariablesCoefficient);
+                        }
+                    });
+                var stepOutVariable = selectedConstraint.LeftSide.Single().Variable.Value;
+                #endregion
+
+                #region Making a pivot step
+                model.MakePivotStep(stepInVariable, stepOutVariable);
+                #endregion
+            }
+
+            return model;
+        }
+
+        /// <summary>
+        /// Checks wheter only negative coefficients can be found in the objective function or not. If so the execution of the simplex algoritm can be finished.
+        /// </summary>
+        /// <param name="model">The LP model on which the check will be perfomed.</param>
+        /// <returns>Wheter the execution of the simplex algoritm can be finished or not.</returns>
+        private static bool AllObjectiveFunctionVariableHasNegativeCoefficient(this LPModel model) => model.Objective.Function.RightSide.Where(term => term.Variable.HasValue).All(term => term.SignedCoefficient < 0);
+
+        /// <summary>
+        /// Does a pivot step by the specified variables on the given LP model.
+        /// </summary>
+        /// <param name="model">The LP mondel on which the pivot step will be done.</param>
+        /// <param name="stepInVariable">This non-basis variable will step in the base.</param>
+        /// <param name="stepOutVariable">This basis variable will step out from the base.</param>
+        /// <param name="withoutObjectiveFunction">Optional - wheter the new basis varibale should be exchanged with its equivalent (right side of its constraint) in the objective function or not.</param>
+        /// <returns>The model after the pivot step.</returns>
+        private static LPModel MakePivotStep(this LPModel model, Variable stepInVariable, Variable stepOutVariable, bool withoutObjectiveFunction = false)
+        {
+            var constraintWithStepOutBasisVariable = model.Constraints.Where(constraint => constraint.LeftSide.Single().Variable?.Equals(stepOutVariable) ?? false).Single();
+            var stepInVariableTerm = constraintWithStepOutBasisVariable.RightSide.Where(term => term.Variable?.Equals(stepInVariable) ?? false).Single();
+
+            constraintWithStepOutBasisVariable.Add(new Term[] { 
+                new Term { SignedCoefficient = -1, Variable = stepOutVariable },
+                new Term { SignedCoefficient = stepInVariableTerm.SignedCoefficient * -1, Variable = stepInVariable }
+            });
+            constraintWithStepOutBasisVariable.Multiply(1 / (stepInVariableTerm.SignedCoefficient * -1));
+
+            model.Constraints.Where(constraint => constraint != constraintWithStepOutBasisVariable)
+                    .ForAll(constraint => constraint.ReplaceVarWithExpression(stepInVariable, constraintWithStepOutBasisVariable.RightSide));
+
+            if (!withoutObjectiveFunction)
+            {
+                model.Objective.Function.ReplaceVarWithExpression(stepInVariable, constraintWithStepOutBasisVariable.RightSide);
+            }
+
             return model;
         }
     }
