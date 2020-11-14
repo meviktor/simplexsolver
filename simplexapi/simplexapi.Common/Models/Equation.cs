@@ -75,7 +75,7 @@ namespace simplexapi.Common.Models
                 var queuedTermsOnLeft = LeftSide.OrderBy(term => term.Variable.HasValue ? (int)term.Variable.Value.Index : -1);
                 foreach (var term in queuedTermsOnLeft)
                 {
-                    if (term.SignedCoefficient != 0)
+                    if (!(term.SignedCoefficient == 0 && term.Variable.HasValue))
                     {
                         equationAsString.Append(string.Format(string.Format(" {0}", term)));
                     }
@@ -112,7 +112,7 @@ namespace simplexapi.Common.Models
                 var queuedTermsOnRight = RightSide.OrderBy(term => term.Variable.HasValue ? (int)term.Variable.Value.Index : -1);
                 foreach (var term in queuedTermsOnRight)
                 {
-                    if (term.SignedCoefficient != 0)
+                    if (!(term.SignedCoefficient == 0 && term.Variable.HasValue))
                     {
                         equationAsString.Append(string.Format(string.Format(" {0}", term)));
                     }
