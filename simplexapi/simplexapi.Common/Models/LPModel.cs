@@ -14,7 +14,7 @@ namespace simplexapi.Common.Models
     public class Objective
     {
         public OptimizationAim Aim { get; set; }
-        public Variable FunctionName => Function.LeftSide.First().Variable.Value;
+        public Variable FunctionName => Function.LeftSide.Single().Variable.Value;
 
         private Equation _function;
         public Equation Function {
@@ -24,7 +24,7 @@ namespace simplexapi.Common.Models
             } 
             set
             {
-                if (value.LeftSide.Count != 1 || value.LeftSide.First().SignedCoefficient != 1 || !value.LeftSide.First().Variable.HasValue) 
+                if (value.LeftSide.Count != 1 || value.LeftSide.Single().SignedCoefficient != 1 || !value.LeftSide.Single().Variable.HasValue) 
                 {
                     throw new ArgumentException(nameof(Equation.LeftSide));
                 }
