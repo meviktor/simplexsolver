@@ -14,12 +14,12 @@ namespace simplexapi.Common.Extensions
             if (foundOnLeft != null)
             {
                 equation.AddToLeft(new Term[] { new Term { SignedCoefficient = foundOnLeft.SignedCoefficient * -1, Variable = varToReplace } });
-                equation.AddToLeft(aliasExpr.Multiply(foundOnLeft.SignedCoefficient));
+                equation.AddToLeft(aliasExpr.Copy().Multiply(foundOnLeft.SignedCoefficient));
             }
             if(foundOnRight != null)
             {
-                equation.AddToRight(new Term[] { new Term { SignedCoefficient = foundOnLeft.SignedCoefficient * -1, Variable = varToReplace } });
-                equation.AddToRight(aliasExpr.Multiply(foundOnRight.SignedCoefficient));
+                equation.AddToRight(new Term[] { new Term { SignedCoefficient = foundOnRight.SignedCoefficient * -1, Variable = varToReplace } });
+                equation.AddToRight(aliasExpr.Copy().Multiply(foundOnRight.SignedCoefficient));
             }
 
             return equation;
