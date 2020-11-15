@@ -30,7 +30,7 @@ namespace simplexapi.Common.Extensions
         /// <param name="expression">The expression wanted to be multiplied.</param>
         /// <param name="factor">The multiplication factor.</param>
         /// <returns>The result of the operation.</returns>
-        public static IEnumerable<Term> Multiply(this IEnumerable<Term> expression, double factor)
+        public static IEnumerable<Term> Multiply(this IEnumerable<Term> expression, Rational factor)
         {
             expression.ForAll(term => term.SignedCoefficient *= factor);
             return expression;
@@ -45,6 +45,19 @@ namespace simplexapi.Common.Extensions
         {
             List<Term> result = new List<Term>();
             expression.ForAll(term => result.Add(new Term { SignedCoefficient = term.SignedCoefficient, Variable = term.Variable }));
+            return result;
+        }
+
+        /// <summary>
+        /// Summarizes a buch of <see cref="Rational"/> numbers selected by the selector expression.
+        /// </summary>
+        /// <param name="collection"></param>
+        /// <param name="selector"></param>
+        /// <returns>The sum of the selected elements.</returns>
+        public static Rational Sum(this IEnumerable<Term> collection, Func<Term, Rational> selector)
+        {
+            Rational result = Rational.Zero;
+            collection.ForAll(term => result += selector(term));
             return result;
         }
     }

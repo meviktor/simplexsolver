@@ -4,13 +4,13 @@ namespace simplexapi.Common.Models
 {
     public class SimplexSolutionDto
     {
-        public double ObjectiveFunctionVariable { get; private set; }
+        public Rational ObjectiveFunctionValue { get; private set; }
 
-        public Dictionary<Variable, double> DecisionVariablesAndValues { get; private set; }
+        public Dictionary<Variable, Rational> DecisionVariablesAndValues { get; private set; }
 
-        public SimplexSolutionDto(double objectiveFunctionValue, Dictionary<Variable, double> decisionVariablesAndValues)
+        public SimplexSolutionDto(Rational objectiveFunctionValue, Dictionary<Variable, Rational> decisionVariablesAndValues)
         {
-            ObjectiveFunctionVariable = objectiveFunctionValue;
+            ObjectiveFunctionValue = objectiveFunctionValue;
             DecisionVariablesAndValues = decisionVariablesAndValues;
         }
     }

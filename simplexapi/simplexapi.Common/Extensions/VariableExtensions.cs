@@ -15,7 +15,7 @@ namespace simplexapi.Common.Extensions
             {
                 LeftSide = new Term[] { new Term { SignedCoefficient = 1, Variable = variable } },
                 SideConnection = SideConnection.GreaterThanOrEqual,
-                RightSide = new Term[] { new Term { SignedCoefficient = 0 } }
+                RightSide = new Term[] { new Term { SignedCoefficient = Rational.Zero } }
             };
         }
     }

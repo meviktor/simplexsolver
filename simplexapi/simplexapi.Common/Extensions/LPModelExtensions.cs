@@ -45,7 +45,7 @@ namespace simplexapi.Common.Extensions
         /// <returns>A <see cref="SimplexSolutionDto"></see> containing the solution. </returns>
         public static SimplexSolutionDto GetSolutionFromDictionary(this LPModel model)
         {
-            var decisionVariableValues = new Dictionary<Variable, double>();
+            var decisionVariableValues = new Dictionary<Variable, Rational>();
 
             model.DecisionVariables.ForAll(decisionVariable =>
             {
@@ -55,7 +55,7 @@ namespace simplexapi.Common.Extensions
                 // value of a basis variable: the constant of its equation/constraint
                 if (isBasisVariable)
                 {
-                    double value = model.Constraints.Single(constraint => leftSideVariable(constraint, decisionVariable)).RightSide.Single(term => !term.Variable.HasValue).SignedCoefficient;
+                    var value = model.Constraints.Single(constraint => leftSideVariable(constraint, decisionVariable)).RightSide.Single(term => !term.Variable.HasValue).SignedCoefficient;
                     decisionVariableValues.Add(decisionVariable, value);
                 }
                 else
@@ -66,27 +66,27 @@ namespace simplexapi.Common.Extensions
                     {
                         var variableAlias = model.StandardFormAliases.Single(aliasExpr => leftSideVariable(aliasExpr, decisionVariable));
                         var dependentVariables = variableAlias.RightSide.Where(term => term.Variable.HasValue).Select(term => term.Variable.Value);
-                        var dependentVariablesAndValues = new Dictionary<Variable, double>();
+                        var dependentVariablesAndValues = new Dictionary<Variable, Rational>();
 
                         dependentVariables.ForAll(dependentVariable =>
                         {
                             bool isDependentVariableInBasis = model.Constraints.Any(constraint => leftSideVariable(constraint, dependentVariable));
                             if (isDependentVariableInBasis)
                             {
-                                double dependentVarValue = model.Constraints.Single(constraint => leftSideVariable(constraint, dependentVariable)).RightSide.Single(term => !term.Variable.HasValue).SignedCoefficient;
+                                var dependentVarValue = model.Constraints.Single(constraint => leftSideVariable(constraint, dependentVariable)).RightSide.Single(term => !term.Variable.HasValue).SignedCoefficient;
                                 dependentVariablesAndValues.Add(dependentVariable, dependentVarValue);
                             }
                             else
                             {
-                                dependentVariablesAndValues.Add(dependentVariable, 0);
+                                dependentVariablesAndValues.Add(dependentVariable, Rational.Zero);
                             }
                         });
 
                         // replace the variables in the alias expression with their value so we can get a numeric value for the original decision variable
-                        double valueOfVariableAlias = 0;
+                        Rational valueOfVariableAlias = Rational.Zero;
                         variableAlias.RightSide.ForAll(term =>
                         {
-                            double termValue = term.Variable.HasValue ?
+                            var termValue = term.Variable.HasValue ?
                                 term.SignedCoefficient * dependentVariablesAndValues.Single(kv => kv.Key.Equals(term.Variable.Value)).Value :
                                 term.SignedCoefficient;
                             valueOfVariableAlias += termValue;
@@ -97,7 +97,7 @@ namespace simplexapi.Common.Extensions
                     // non-basis variable
                     else
                     {
-                        decisionVariableValues.Add(decisionVariable, 0);
+                        decisionVariableValues.Add(decisionVariable, Rational.Zero);
                     }
                 }
             });
@@ -266,6 +266,7 @@ namespace simplexapi.Common.Extensions
             #region Adding -var0 to the left side of the constarints & the slack variables
             var var0 = new Variable { Name = model.AllVariables.First().Name, Index = 0 };
             model.AllVariables.Add(var0);
+            model.InterpretationRanges.Add(var0.GreaterOrEqualThanZeroRange());
 
             model.Constraints.ForAll(constraint =>
             {
@@ -273,6 +274,7 @@ namespace simplexapi.Common.Extensions
 
                 var newSlackVariable = new Variable { Name = model.AllVariables.First().Name, Index = model.AllVariables.Max(var => var.Index) + 1 };
                 model.AllVariables.Add(newSlackVariable);
+                model.InterpretationRanges.Add(newSlackVariable.GreaterOrEqualThanZeroRange());
 
                 constraint.AddToLeft(new Term[] { new Term { SignedCoefficient = 1, Variable = newSlackVariable } });
                 constraint.SideConnection = SideConnection.Equal;
@@ -352,10 +354,10 @@ namespace simplexapi.Common.Extensions
             #region If var0 is a basis variable it will be exchanged with a non-basis variable by a pivot step
             var constraintWithVar0Basis = model.Constraints.Where(constraint => constraint.LeftSide.Count == 1 && constraint.LeftSide.Any(term => term.Variable.Value.Index == 0))
                                                            .SingleOrDefault();
-            
+
+            var var0 = new Variable { Name = model.AllVariables.First().Name, Index = 0 };
             if (constraintToRemove != null)
             {
-                var var0 = new Variable { Name = model.AllVariables.First().Name, Index = 0 };
                 // choosing the variable has a negative coefficient and the smallest index
                 var newBasisVariable = constraintWithVar0Basis.RightSide
                     .Where(term => term.Variable.Value.Index == constraintWithVar0Basis.RightSide
@@ -376,6 +378,7 @@ namespace simplexapi.Common.Extensions
                     constraint.RightSide.Remove(foundVar0);
                 }
             });
+            model.InterpretationRanges.Remove(model.InterpretationRanges.Single(range => range.LeftSide.Single().Variable?.Equals(var0) ?? false));
             #endregion
 
             #region Set back the original objective function exhanging the basis variables with their equivaltent expressions from the dictionary (right sides)
@@ -480,19 +483,19 @@ namespace simplexapi.Common.Extensions
 
                 #region Determining the variable which will leave the base by finding the smallest quotient
                 Equation selectedConstraint = null;
-                double smallestQuotient = double.MaxValue;
+                Rational? smallestQuotient = null;
                 model.Constraints.Where(constraint => constraint.RightSide.Any(term => hasKIndex(term) && term.SignedCoefficient < 0))
                     .ForAll(constraint =>
                     {
-                    // This value must be positive - if not the dictionary were not valid
-                    var constraintsConstantValue = constraint.RightSide.Where(term => !term.Variable.HasValue).Single().SignedCoefficient;
+                        // This value must be positive - if not the dictionary were not valid
+                        var constraintsConstantValue = constraint.RightSide.Where(term => !term.Variable.HasValue).Single().SignedCoefficient;
                         var kIndexedVariablesCoefficient = constraint.RightSide.Where(term => hasKIndex(term)).Single().SignedCoefficient;
-
-                        var smallestQuotientFound = constraintsConstantValue / Math.Abs(kIndexedVariablesCoefficient) < smallestQuotient;
+                        // If this is the fist ratio, we will store it automatically (smallestQuotient doesn't have a value yet
+                        var smallestQuotientFound = !smallestQuotient.HasValue || ((constraintsConstantValue / kIndexedVariablesCoefficient.Abs()) < smallestQuotient);
                         if (smallestQuotientFound)
                         {
                             selectedConstraint = constraint;
-                            smallestQuotient = constraintsConstantValue / Math.Abs(kIndexedVariablesCoefficient);
+                            smallestQuotient = constraintsConstantValue / kIndexedVariablesCoefficient.Abs();
                         }
                     });
                 var stepOutVariable = selectedConstraint.LeftSide.Single().Variable.Value;
@@ -531,7 +534,7 @@ namespace simplexapi.Common.Extensions
                 new Term { SignedCoefficient = stepInVariableTerm.SignedCoefficient * -1, Variable = stepInVariable }
             });
             // TODO: le kell cserélni a reciprokkal történő szorzást osztásra
-            constraintWithStepOutBasisVariable.Multiply(1 / (stepInVariableTerm.SignedCoefficient * -1));
+            constraintWithStepOutBasisVariable.Multiply(new Rational(stepInVariableTerm.SignedCoefficient.Denominator, stepInVariableTerm.SignedCoefficient.Numerator) * -1);
 
             model.Constraints.Where(constraint => constraint != constraintWithStepOutBasisVariable)
                     .ForAll(constraint => constraint.ReplaceVarWithExpression(stepInVariable, constraintWithStepOutBasisVariable.RightSide));

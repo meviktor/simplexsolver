@@ -27,15 +27,15 @@ namespace simplexapi.Common.Models
 
     public class Term
     {
-        public double SignedCoefficient { get; set; }
+        public Rational SignedCoefficient { get; set; }
         // if this field is null the term is a constant
         public Variable? Variable { get; set; }
 
         public override string ToString()
         {
             return Variable.HasValue ?
-                string.Format("{0}{1}", SignedCoefficient.ToString("+#;-#;0"), Variable) :
-                string.Format("{0}", SignedCoefficient.ToString("+#;-#;0"));
+                string.Format("{0}{1}", SignedCoefficient.ToString(), Variable) :
+                string.Format("{0}", SignedCoefficient.ToString());
         }
 
     }
