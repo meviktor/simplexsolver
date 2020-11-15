@@ -323,7 +323,7 @@ namespace simplexapi.Common.Extensions
                    OptimizationAim.Maximize,
                    new Equation
                    {
-                       LeftSide = new Term[] { new Term { SignedCoefficient = 1, Variable = new Variable { Name = "w", Index = 0 } } },
+                       LeftSide = new Term[] { new Term { SignedCoefficient = 1, Variable = new Variable { Name = model.FirstPhasefunctionVariableName.ToString(), Index = 0 } } },
                        SideConnection = SideConnection.Equal,
                        RightSide = mostNegativeRightSidedConstraint.DeepCopy().RightSide.Multiply(-1) as IList<Term>
                    }

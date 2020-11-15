@@ -46,6 +46,9 @@ namespace simplexapi.Common.Models
     
     public class LPModel
     {
+        public char DecisionVariableName { get; set; }
+        public char FunctionVariableName { get; set; }
+        public char FirstPhasefunctionVariableName { get; set; }
         public Variable[] DecisionVariables { get; set; }
         public IList<Variable> AllVariables { get; set; }
         public IList<Equation> Constraints { get; set; }
