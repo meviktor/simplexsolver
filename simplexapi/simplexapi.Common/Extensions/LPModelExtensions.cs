@@ -45,7 +45,7 @@ namespace simplexapi.Common.Extensions
         /// <returns>A <see cref="SimplexSolutionDto"></see> containing the solution. </returns>
         public static SimplexSolutionDto GetSolutionFromDictionary(this LPModel model)
         {
-            var decisionVariableValues = new Dictionary<Variable, Rational>();
+            var decisionVariableValues = new List<VariableValuePairDto>();
 
             model.DecisionVariables.ForAll(decisionVariable =>
             {
@@ -56,7 +56,11 @@ namespace simplexapi.Common.Extensions
                 if (isBasisVariable)
                 {
                     var value = model.Constraints.Single(constraint => leftSideVariable(constraint, decisionVariable)).RightSide.Single(term => !term.Variable.HasValue).SignedCoefficient;
-                    decisionVariableValues.Add(decisionVariable, value);
+                    decisionVariableValues.Add( new VariableValuePairDto
+                    {
+                       Variable = new VariableDto { Index = decisionVariable.Index, Name = decisionVariable.Name },
+                       Value = new RationalDto { Numerator = value.Numerator, Denominator = value.Denominator }
+                    });
                 }
                 else
                 {
@@ -92,17 +96,28 @@ namespace simplexapi.Common.Extensions
                             valueOfVariableAlias += termValue;
                         });
 
-                        decisionVariableValues.Add(decisionVariable, valueOfVariableAlias);
+                        decisionVariableValues.Add(new VariableValuePairDto
+                        {
+                           Variable = new VariableDto { Index = decisionVariable.Index, Name = decisionVariable.Name },
+                           Value = new RationalDto { Numerator = valueOfVariableAlias.Numerator, Denominator = valueOfVariableAlias.Denominator }
+                        });
                     }
                     // non-basis variable
                     else
                     {
-                        decisionVariableValues.Add(decisionVariable, Rational.Zero);
+                        decisionVariableValues.Add(new VariableValuePairDto
+                        {
+                            Variable = new VariableDto { Index = decisionVariable.Index, Name = decisionVariable.Name },
+                            Value = new RationalDto { Numerator = Rational.Zero.Numerator, Denominator = Rational.Zero.Denominator }
+                        });
                     }
                 }
             });
 
-            return new SimplexSolutionDto(model.Objective.FunctionValue, decisionVariableValues);
+            return new SimplexSolutionDto(
+                new RationalDto { Numerator = model.Objective.FunctionValue.Numerator, Denominator = model.Objective.FunctionValue.Denominator},
+                decisionVariableValues
+            );
         }
 
         /// <summary>

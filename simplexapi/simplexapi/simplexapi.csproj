@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <UserSecretsId>025cf99f-c279-47c2-9d70-abb76181df20</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\simplexapi.Common\simplexapi.Common.csproj" />
+  </ItemGroup>
+
+
+</Project>

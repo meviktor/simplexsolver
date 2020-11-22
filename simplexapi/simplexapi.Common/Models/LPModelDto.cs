@@ -7,151 +7,84 @@ namespace simplexapi.Common.Models
 {
     public class LPModelDto
     {
-        private char _decisionVariableName;
-        private char _functionVariableName;
-        private char _firstPhasefunctionVariableName;
-        private uint _numberOfDecisionVariables;
-        private uint _numberOfConstraints;
-        private int[][] _constraintsLeftMatrix;
-        private SideConnection[] _constraintConnectionsVector;
-        private int[] _constraintsRightVector;
-        private int?[] _interpretationRanges;
-        private int[] _objectiveCoefficients;
+        public char DecisionVariableName { get; set; }
 
-        public char DecisionVariableName
-        {
-            get { return _decisionVariableName; }
-            set
-            {
-                if (value >= 'a' && value <= 'z' && value != _functionVariableName && value != _firstPhasefunctionVariableName)
-                {
-                    _decisionVariableName = value;
-                }
-                else throw new ArgumentException(nameof(DecisionVariableName));
-            }
-        }
+        public char FunctionVariableName { get; set; }
 
-        public char FunctionVariableName
-        {
-            get { return _functionVariableName; }
-            set
-            {
-                if (value >= 'a' && value <= 'z' && value != _decisionVariableName && value != _firstPhasefunctionVariableName)
-                {
-                    _functionVariableName = value;
-                }
-                else throw new ArgumentException(nameof(FunctionVariableName));
-            }
-        }
+        public char FirstPhaseFunctionVariableName { get; set; }
+        
+        public uint NumberOfDecisionVariables { get; set; }
 
-        public char FirstPhaseFunctionVariableName
-        {
-            get { return _firstPhasefunctionVariableName; }
-            set
-            {
-                if (value >= 'a' && value <= 'z' && value != _decisionVariableName && value != _functionVariableName)
-                {
-                    _firstPhasefunctionVariableName = value;
-                }
-                else throw new ArgumentException(nameof(FirstPhaseFunctionVariableName));
-            }
-        }
-        public uint NumberOfDecisionVariables
-        {
-            get { return _numberOfDecisionVariables; }
-            set
-            {
-                if (value == 0)
-                {
-                    throw new ArgumentException(nameof(NumberOfDecisionVariables));
-                }
-                _numberOfDecisionVariables = value;
-            }
-        }
+        public uint NumberOfConstraints { get; set; }
 
-        public uint NumberOfConstraints
-        {
-            get { return _numberOfConstraints; }
-            set
-            {
-                if (value == 0)
-                {
-                    throw new ArgumentException(nameof(NumberOfConstraints));
-                }
-                _numberOfConstraints = value;
-            }
-        }
+        public int[][] ConstraintsLeftSideMatrix { get; set; }
 
-        public int[][] ConstraintsLeftSideMatrix
-        {
-            get { return _constraintsLeftMatrix; }
-            set
-            {
-                if (value.Length != _numberOfConstraints || value.Any(constraintRow => constraintRow.Length != _numberOfDecisionVariables))
-                {
-                    throw new ArgumentException(nameof(ConstraintsLeftSideMatrix));
-                }
-                _constraintsLeftMatrix = value;
-            }
-        }
+        public SideConnection[] ConstraintConnectionsVector { get; set; }
+      
+        public int[] ConstraintsRightVector { get; set; }
 
-        public SideConnection[] ConstraintConnectionsVector
-        {
-            get { return _constraintConnectionsVector; }
-            set
-            {
-                if (value.Length != _numberOfConstraints || value.Any(connection => !Enum.IsDefined(typeof(SideConnection), connection)))
-                {
-                    throw new ArgumentException(nameof(ConstraintConnectionsVector));
-                }
-                _constraintConnectionsVector = value;
-            }
-        }
-
-        public int[] ConstraintsRightVector
-        {
-            get { return _constraintsRightVector; }
-            set
-            {
-                if (value.Length != _numberOfConstraints)
-                {
-                    throw new ArgumentException(nameof(ConstraintsRightVector));
-                }
-                _constraintsRightVector = value;
-            }
-        }
-
-        public int?[] InterpretationRanges
-        {
-            get { return _interpretationRanges; }
-            set
-            {
-                if (value.Length != _numberOfDecisionVariables)
-                {
-                    throw new ArgumentException(nameof(InterpretationRanges));
-                }
-                _interpretationRanges = value;
-            }
-        }
+        public int?[] InterpretationRanges { get; set; }
 
         public bool Maximization { get; set; }
 
-        public int[] ObjectiveCoefficientVector
-        {
-            get { return _objectiveCoefficients; }
-            set
-            {
-                if (value.Length != _numberOfDecisionVariables)
-                {
-                    throw new ArgumentException(nameof(ObjectiveCoefficientVector));
-                }
-                _objectiveCoefficients = value;
-            }
-        }
+        public int[] ObjectiveCoefficientVector { get; set; }
     }
 
     public static class LPModelDtoExtensions
     {
+        public static void Validate(this LPModelDto dto)
+        {
+            if (dto.DecisionVariableName < 'a' || dto.DecisionVariableName > 'z' || dto.DecisionVariableName == dto.FunctionVariableName || dto.DecisionVariableName == dto.FirstPhaseFunctionVariableName)
+            {
+                throw new ArgumentException(nameof(dto.DecisionVariableName));
+            }
+
+            if (dto.FunctionVariableName < 'a' || dto.FunctionVariableName > 'z' || dto.FunctionVariableName == dto.DecisionVariableName || dto.FunctionVariableName == dto.FirstPhaseFunctionVariableName)
+            {
+                throw new ArgumentException(nameof(dto.FunctionVariableName));
+            }
+
+            if (dto.FirstPhaseFunctionVariableName < 'a' || dto.FirstPhaseFunctionVariableName > 'z' || dto.FirstPhaseFunctionVariableName == dto.DecisionVariableName || dto.FirstPhaseFunctionVariableName == dto.FunctionVariableName)
+            {
+                throw new ArgumentException(nameof(dto.FirstPhaseFunctionVariableName));
+            }
+
+            if (dto.NumberOfDecisionVariables == 0)
+            {
+                throw new ArgumentException(nameof(dto.NumberOfDecisionVariables));
+            }
+
+            if (dto.NumberOfConstraints == 0)
+            {
+                throw new ArgumentException(nameof(dto.NumberOfConstraints));
+            }
+
+            if (dto.ConstraintsLeftSideMatrix.Length != dto.NumberOfConstraints || dto.ConstraintsLeftSideMatrix.Any(constraintRow => constraintRow.Length != dto.NumberOfDecisionVariables))
+            {
+                throw new ArgumentException(nameof(dto.ConstraintsLeftSideMatrix));
+            }
+
+            if (dto.ConstraintConnectionsVector.Length != dto.NumberOfConstraints || dto.ConstraintConnectionsVector.Any(connection => !Enum.IsDefined(typeof(SideConnection), connection)))
+            {
+                throw new ArgumentException(nameof(dto.ConstraintConnectionsVector));
+            }
+
+            if (dto.ConstraintsRightVector.Length != dto.NumberOfConstraints)
+            {
+                throw new ArgumentException(nameof(dto.ConstraintsRightVector));
+            }
+
+            if (dto.InterpretationRanges.Length != dto.NumberOfDecisionVariables)
+            {
+                throw new ArgumentException(nameof(dto.InterpretationRanges));
+            }
+
+            if (dto.ObjectiveCoefficientVector.Length != dto.NumberOfDecisionVariables)
+            {
+                throw new ArgumentException(nameof(dto.ObjectiveCoefficientVector));
+            }
+        }
+
         public static LPModel MapTo(this LPModelDto dto, LPModel model)
         {
             model.DecisionVariableName = dto.DecisionVariableName;
@@ -163,14 +96,14 @@ namespace simplexapi.Common.Models
             model.AllVariables = decisionVarExpr().ToList();
 
             model.Constraints = new List<Equation>();
-            Enumerable.Range(0, (int)dto.NumberOfConstraints - 1).ForAll(i =>
+            Enumerable.Range(0, (int)dto.NumberOfConstraints).ForAll(i =>
             {
                 List<Term> leftSide = new List<Term>();
                 Enumerable.Range(0, (int)dto.NumberOfDecisionVariables).ForAll(k =>
                 {
                     if(dto.ConstraintsLeftSideMatrix[i][k] != 0)
                     {
-                        leftSide.Add(new Term { SignedCoefficient = dto.ConstraintsLeftSideMatrix[i][k], Variable = new Variable { Name = dto.DecisionVariableName.ToString(), Index = (uint)k } });
+                        leftSide.Add(new Term { SignedCoefficient = dto.ConstraintsLeftSideMatrix[i][k], Variable = new Variable { Name = dto.DecisionVariableName.ToString(), Index = (uint)k + 1} });
                     }
                 });
 
@@ -183,13 +116,13 @@ namespace simplexapi.Common.Models
             });
 
             model.InterpretationRanges = new List<Equation>();
-            Enumerable.Range(0, (int)dto.NumberOfDecisionVariables - 1).ForAll(i =>
+            Enumerable.Range(0, (int)dto.NumberOfDecisionVariables).ForAll(i =>
             {
                 if(dto.InterpretationRanges[i] != null)
                 {
                     model.InterpretationRanges.Add(new Equation
                     {
-                        LeftSide = new Term[] { new Term { SignedCoefficient = 1, Variable = new Variable { Name = dto.DecisionVariableName.ToString(), Index = (uint)i } } },
+                        LeftSide = new Term[] { new Term { SignedCoefficient = 1, Variable = new Variable { Name = dto.DecisionVariableName.ToString(), Index = (uint)i + 1} } },
                         RightSide = new Term[] { new Term { SignedCoefficient = dto.InterpretationRanges[i].Value } },
                         SideConnection = SideConnection.GreaterThanOrEqual
                     });
@@ -201,7 +134,7 @@ namespace simplexapi.Common.Models
             {
                 if(dto.ObjectiveCoefficientVector[k] != 0)
                 {
-                    objectiveRightSide.Add(new Term { SignedCoefficient = dto.ObjectiveCoefficientVector[k], Variable = new Variable { Name = dto.DecisionVariableName.ToString(), Index = (uint)k } });
+                    objectiveRightSide.Add(new Term { SignedCoefficient = dto.ObjectiveCoefficientVector[k], Variable = new Variable { Name = dto.DecisionVariableName.ToString(), Index = (uint)k + 1} });
                 }
             });
             model.Objective = new Objective(
