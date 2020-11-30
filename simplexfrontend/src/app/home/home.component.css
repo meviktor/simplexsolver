@@ -1,0 +1,31 @@
+.btn a:link {
+    text-decoration: none;
+    color: #000000;
+  }
+  
+.btn a:visited {
+    text-decoration: none;
+    color: #000000;
+  }
+  
+.btn a:hover {
+    text-decoration: none;
+    color: #ffffff;
+  }
+  
+.btn a:active {
+    text-decoration: none;
+    color: #ffffff;
+  }
+
+.baseBox.dashboardItemBox {
+      margin: 10px;
+  }
+
+.baseBox.inactiveAuctionBox {
+    background-color: #ffaaaa;
+}
+
+.baseBox.auctionsContainerBox.onDashboard {
+  max-height: 250px;
+}
