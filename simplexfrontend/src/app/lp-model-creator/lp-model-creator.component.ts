@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { LpsolverService } from '../_services/lpsolver.service';
 
 @Component({
   selector: 'app-lp-model-creator',
@@ -37,14 +38,32 @@ export class LpModelCreatorComponent implements OnInit {
   maximization: boolean = true;
   objectiveCoefficientVector: number[] = [];
 
-  constructor() { }
+  constructor(private lpSolverService: LpsolverService) { }
 
   ngOnInit(): void {
     this.hideElementById("constraintsObjectiveInterpretationContainer");
   }
 
-  public dummy(): void{
-    console.log(this.composeLPModelRequestJsonFromView());
+  public sendLPModelToSolver(): void{
+    var requestObject;
+    var successfullyValidated = true;
+    var errorMessage;
+
+    try{
+      requestObject = this.composeLPModelRequestJsonFromView();
+    }
+    catch(e){
+      successfullyValidated = false;
+      errorMessage = e.message;
+    }
+
+    if(successfullyValidated){
+      this.lpSolverService.solveLP(requestObject)
+        .subscribe(solution => console.log(solution));
+    }
+    else{
+      alert(errorMessage);
+    }
   }
 
   numberDecisionVariablesAndConstraintsChanged(): void {
@@ -217,15 +236,10 @@ export class LpModelCreatorComponent implements OnInit {
   }
   
   private loadLPModel(){
-    try{
-      this.loadConstraintLeftSideMaxtrixFromView();
-      this.loadConstraintsRightVectorFromView();
-      this.loadObjectiveCoefficientVectorFromView();
-      this.loadInterpretationRangeVectorFromView();
-    }
-    catch(e){
-      alert(e.message);
-    }
+    this.loadConstraintLeftSideMaxtrixFromView();
+    this.loadConstraintsRightVectorFromView();
+    this.loadObjectiveCoefficientVectorFromView();
+    this.loadInterpretationRangeVectorFromView();
 
     this.loadConstraintConnectionsVectorFromView();
     this.loadOptimizationAimFromView();
