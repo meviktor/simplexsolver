@@ -91,7 +91,7 @@ namespace simplexapi.Common.Models
             model.FunctionVariableName = dto.FunctionVariableName;
             model.FirstPhasefunctionVariableName = dto.FirstPhaseFunctionVariableName;
 
-            Func<IEnumerable<Variable>> decisionVarExpr = () => Enumerable.Range(1, (int)dto.NumberOfConstraints).Select(i => new Variable { Name = dto.DecisionVariableName.ToString(), Index = (uint)i });
+            Func<IEnumerable<Variable>> decisionVarExpr = () => Enumerable.Range(1, (int)dto.NumberOfDecisionVariables).Select(i => new Variable { Name = dto.DecisionVariableName.ToString(), Index = (uint)i });
             model.DecisionVariables = decisionVarExpr().ToArray();
             model.AllVariables = decisionVarExpr().ToList();
 
