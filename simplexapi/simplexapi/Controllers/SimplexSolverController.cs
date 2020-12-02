@@ -1,22 +1,31 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using simplexapi.Common.Exceptions;
 using simplexapi.Common.Extensions;
 using simplexapi.Common.Models;
 using simplexapi.Constants;
+using simplexapi.Models;
+using simplexapi.Operations;
 using System;
+using System.Threading.Tasks;
 
 namespace simplexapi.Controllers
 {
     [Route("[controller]/[action]")]
     public class SimplexSolverController : Controller
     {
+        private readonly LpTaskOperations _lpTaskOperations;
+        public SimplexSolverController(LpTaskOperations lpTaskOperations)
+        {
+            _lpTaskOperations = lpTaskOperations;
+        }
         public IActionResult Ping()
         {
             return Json(new { status = "OK" });
         }
 
         [HttpPost]
-        public IActionResult Solve([FromBody] LPModelDto lpModelDto)
+        public async Task<IActionResult> Solve([FromBody] LPModelDto lpModelDto)
         {
             bool wrongFormat = false;
             string message = null;
@@ -50,7 +59,17 @@ namespace simplexapi.Controllers
             {
                 return BadRequest(new { success = false, message = message });
             }
-            return Json(new { success = solution != null, message = message, solution = solution });
+
+            var lpTask = new LpTask
+            {
+                LPModelAsJson = JsonConvert.SerializeObject(lpModelDto),
+                SolutionAsJson = JsonConvert.SerializeObject(new { solutionFound = solution != null, message = message, solution = solution }),
+                SolvedAt = DateTimeOffset.Now
+            };
+
+             await _lpTaskOperations.Add(lpTask);
+
+            return Json(new { success = true, taskId = lpTask.Id });
         }
     }
 }

@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using simplexapi.Data;
+using simplexapi.Operations;
 
 namespace simplexapi
 {
@@ -19,6 +22,11 @@ namespace simplexapi
         {
             services.AddCors();
             services.AddControllers();
+
+            services.AddScoped<LpTaskOperations, LpTaskOperations>();
+
+            services.AddDbContext<SimplexSolverDbContext>(options =>
+               options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
