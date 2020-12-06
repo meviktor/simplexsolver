@@ -1,0 +1,69 @@
+p {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+h3 {
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+h2 {
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+
+#mainframe {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.decisionVariableHeader {
+    background: #29b6f6;
+    font-weight: bold;
+}
+
+.decisionVariableBody {
+    background: #81d4fa;
+}
+
+.relationHeader, .aimHeader {
+    background: #039be5;
+    font-weight: bold;
+}
+
+.relationBody, .aimBody {
+    background: #29b6f6;
+}
+
+.constantHeader {
+    background: #0288d1;
+    font-weight: bold;
+}
+
+.constantBody {
+    background: #03a9f4;
+}
+
+.cell {
+    border: 1px solid;
+    border-color: #e3f2fd;
+}
+
+.row{
+    margin-bottom: 1px;
+}
+
+.col {
+    padding: 0;
+}
+
+.btn {
+    margin: 2px
+}
+
+#resultTypeSelectorBox {
+    margin-bottom: 5px;
+}

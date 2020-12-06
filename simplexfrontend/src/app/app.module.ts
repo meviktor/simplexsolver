@@ -7,19 +7,26 @@ import { AppComponent } from './app.component';
 
 import { HomeComponent } from './home/home.component';
 import { LpModelCreatorComponent } from './lp-model-creator/lp-model-creator.component';
+import { ResultComponent } from './result/result.component';
+import { Utils } from './_utils/utils';
+import { HistoryComponent } from './history/history.component'
 
 @NgModule({
   declarations: [
     AppComponent,
     HomeComponent,
-    LpModelCreatorComponent
+    LpModelCreatorComponent,
+    ResultComponent,
+    HistoryComponent
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
     HttpClientModule
   ],
-  providers: [],
+  providers: [
+    { provide: Utils }
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

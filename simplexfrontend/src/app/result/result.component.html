@@ -1,0 +1,105 @@
+<div *ngIf="initialized" id="mainframe">
+    <h2>Result</h2>
+    <h3>The provided LP model</h3>
+    <p>Constraints:</p>
+    <div class="row">
+        <div class="col col-xl-6 col-lg-6 col-md-12 col-sm-12 col-xs-12">
+            <div class="row">
+                <div class="col col-8">
+                    <div class="row">
+                        <div *ngFor="let i of utils.sequence(lpTaskResult.lpModel.numberOfDecisionVariables, 1)" class="col decisionVariableHeader cell d-flex justify-content-center">
+                            {{lpTaskResult.lpModel.decisionVariableName}}{{i}}
+                        </div>
+                    </div>
+                    <div *ngFor="let constraint of lpTaskResult.lpModel.constraintsLeftSideMatrix" class="row decisionVariableBody">
+                        <div *ngFor="let coefficient of constraint" class="col d-flex justify-content-center cell">
+                            {{coefficient}}
+                        </div>
+                    </div>
+                </div>
+                <div class="col col-2">
+                    <div class="row relationHeader cell d-flex justify-content-center">Relation</div>
+                    <div *ngFor="let relation of lpTaskResult.lpModel.constraintConnectionsVector" class="row relationBody cell d-flex justify-content-center">
+                        {{relation == 1 ? possibleSideConnections[0] : relation == 2 ? possibleSideConnections[1] : possibleSideConnections[2]}}
+                    </div>
+                </div>
+                <div class="col col-2">
+                    <div class="row constantHeader cell d-flex justify-content-center">Constant</div>
+                    <div *ngFor="let rightSideConstant of lpTaskResult.lpModel.constraintsRightVector" class="row constantBody cell d-flex justify-content-center">
+                        {{rightSideConstant}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p>Interpretation ranges:</p>
+    <div class="row">
+        <div class="col col-xl-4 col-lg-4 col-md-8 col-sm-8 col-xs-12">
+           <div class="row">
+               <div class="col">
+                    <div class="row">
+                        <div *ngFor="let i of utils.sequence(lpTaskResult.lpModel.numberOfDecisionVariables, 1)" class="col decisionVariableHeader cell d-flex justify-content-center">
+                            {{lpTaskResult.lpModel.decisionVariableName}}{{i}}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div *ngFor="let bound of lpTaskResult.lpModel.interpretationRanges" class="col decisionVariableBody cell d-flex justify-content-center">
+                            {{bound}}
+                        </div>
+                    </div>
+               </div>
+           </div>
+        </div>
+    </div>
+    <p>Objective:</p>
+    <div class="row">
+        <div class="col col-xl-6 col-lg-6 col-md-9 col-sm-9 col-xs-12">
+            <div class="row">
+                <div *ngFor="let i of utils.sequence(lpTaskResult.lpModel.numberOfDecisionVariables, 1)" class="col decisionVariableHeader cell d-flex justify-content-center">
+                    {{lpTaskResult.lpModel.decisionVariableName}}{{i}}
+                </div>
+                <div class="col aimHeader cell d-flex justify-content-center">Aim</div>
+            </div>
+            <div class="row">
+                <div *ngFor="let coefficient of lpTaskResult.lpModel.objectiveCoefficientVector" class="col decisionVariableBody cell d-flex justify-content-center">
+                    {{coefficient}}
+                </div>
+                <div *ngIf="lpTaskResult.lpModel.maximization" class="col aimBody cell d-flex justify-content-center">Max</div>
+                <div *ngIf="!lpTaskResult.lpModel.maximization" class="col aimBody cell d-flex justify-content-center">Min</div>
+            </div>
+        </div>
+    </div>
+    <h3>Solution</h3>
+    <div>
+        <div *ngIf="!lpTaskResult.solution.solutionFound">
+            <p>The provided LP model has no solution.</p>
+            <p>{{lpTaskResult.solution.message}}</p>
+        </div>
+        <div *ngIf="lpTaskResult.solution.solutionFound">
+            <div id="resultTypeSelectorBox"><input type="checkbox" (change)="showAsFractionChanged()"> Show results as fractions</div>
+            <div class="row">
+                <div class="col col-xl-4 col-lg-4 col-md-8 col-sm-8 col-xs-12">
+                    <div class="row">
+                        <div *ngFor="let variableValuePair of lpTaskResult.solution.solution.decisionVariablesAndValues" class="col">
+                            <div class="row decisionVariableHeader cell d-flex justify-content-center">{{variableValuePair.variable.name}}{{variableValuePair.variable.index}}</div>
+                            <div class="row decisionVariableBody cell d-flex justify-content-center">{{ showAsFractions ? fractionForm(variableValuePair.value.numerator, variableValuePair.value.denominator) : decimalForm(variableValuePair.value.numerator, variableValuePair.value.denominator)}}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p>Objective function value: <b>{{ showAsFractions ? fractionForm(lpTaskResult.solution.solution.objectiveFunctionValue.numerator, lpTaskResult.solution.solution.objectiveFunctionValue.denominator) : decimalForm(lpTaskResult.solution.solution.objectiveFunctionValue.numerator, lpTaskResult.solution.solution.objectiveFunctionValue.denominator) }}</b></p>
+    </div>
+    <p>Solved at: {{lpTaskResult.solvedAt}}</p>
+    <div class="row">
+        <div class="col col-xl-3 col-lg-3 col-md-6 col-sm-6 col-xs-9">
+            <div class="row">
+                <a routerLink="/" routerLinkActive="active"><button class="btn btn-primary btn-round">Go to dashboard</button></a>
+            </div>
+            <div class="row">
+                <a routerLink="/history" routerLinkActive="active"><button class="btn btn-primary btn-round">Go to history</button></a>
+            </div>
+        </div>
+    </div>
+</div>
+<div *ngIf="!initialized">Getting results...</div>
