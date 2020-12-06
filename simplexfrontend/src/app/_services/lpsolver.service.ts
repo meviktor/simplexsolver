@@ -13,4 +13,8 @@ export class LpsolverService {
   solveLP(lpModelQuery: any){
     return this.http.post<any>(`${environment.apiUrl}/solve`, lpModelQuery).pipe(first());
   }
+
+  getResult(taskId: any){
+    return this.http.post<any>(`${environment.apiUrl}/taskresult?taskId=${taskId}`, {}).pipe(first());
+  }
 }
