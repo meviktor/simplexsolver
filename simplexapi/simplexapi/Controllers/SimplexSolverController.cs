@@ -35,7 +35,7 @@ namespace simplexapi.Controllers
             {
                 lpModelDto.Validate();
             }
-            catch(ArgumentException e)
+            catch (ArgumentException e)
             {
                 wrongFormat = true;
                 message = string.Format(Messages.WRONG_FORMAT_CHECK_ARG, e.ParamName);
@@ -63,13 +63,28 @@ namespace simplexapi.Controllers
             var lpTask = new LpTask
             {
                 LPModelAsJson = JsonConvert.SerializeObject(lpModelDto),
-                SolutionAsJson = JsonConvert.SerializeObject(new { solutionFound = solution != null, message = message, solution = solution }),
+                SolutionAsJson = JsonConvert.SerializeObject(new LPTaskResultDto{ SolutionFound = solution != null, Message = message, Solution = solution }),
                 SolvedAt = DateTimeOffset.Now
             };
 
-             await _lpTaskOperations.Add(lpTask);
+            await _lpTaskOperations.Add(lpTask);
 
             return Json(new { success = true, taskId = lpTask.Id });
+        }
+
+        public async Task<IActionResult> TaskResult(Guid taskId)
+        {
+            var foundTask = await _lpTaskOperations.FindById(taskId);
+            if(foundTask == null)
+            {
+                return BadRequest(new { message = $"There is no solved task with id {taskId}" });
+            }
+            return Json(new
+            {
+                solvedAt = foundTask.SolvedAt,
+                lpModel = JsonConvert.DeserializeObject<LPModelDto>(foundTask.LPModelAsJson),
+                solution = JsonConvert.DeserializeObject<LPTaskResultDto>(foundTask.SolutionAsJson)
+            });
         }
     }
 }

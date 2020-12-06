@@ -31,5 +31,7 @@ namespace simplexapi.Operations
         public async Task<LpTask> FindById(Guid lpTaskId) => await _ctx.LpTasks.SingleOrDefaultAsync(lpTask => lpTask.Id == lpTaskId);
 
         public async Task<IEnumerable<LpTask>> Page(int from, int to) => await _ctx.LpTasks.OrderByDescending(lpTask => lpTask.SolvedAt).Skip(from).Take(to).ToListAsync();
+
+        public async Task<IEnumerable<LpTask>> GetTheLast(int itemCount) => await Page(0, itemCount);
     }
 }
