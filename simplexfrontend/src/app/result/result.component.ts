@@ -1,5 +1,4 @@
 import { Component, OnInit } from '@angular/core';
-import { Console } from 'console';
 import { LpsolverService } from '../_services/lpsolver.service';
 import { Utils } from '../_utils/utils';
 
