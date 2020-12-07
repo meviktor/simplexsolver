@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import { LpsolverService } from '../_services/lpsolver.service';
 
 @Component({
@@ -38,7 +39,7 @@ export class LpModelCreatorComponent implements OnInit {
   maximization: boolean = true;
   objectiveCoefficientVector: number[] = [];
 
-  constructor(private lpSolverService: LpsolverService) { }
+  constructor(private lpSolverService: LpsolverService, private router: Router) { }
 
   ngOnInit(): void {
     this.hideElementById("constraintsObjectiveInterpretationContainer");
@@ -59,7 +60,14 @@ export class LpModelCreatorComponent implements OnInit {
 
     if(successfullyValidated){
       this.lpSolverService.solveLP(requestObject)
-        .subscribe(solution => console.log(solution));
+        .subscribe(response => {
+          if(response.success){
+            this.router.navigateByUrl(`/result/${response.taskId}`);
+          }
+          else{
+            alert("Sending the LP model did not succeed.");
+          }
+        });
     }
     else{
       alert(errorMessage);
