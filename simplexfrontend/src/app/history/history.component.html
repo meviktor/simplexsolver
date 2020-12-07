@@ -1,1 +1,36 @@
-<p>history works!</p>
+<div id="mainframe">
+    <h2>History</h2>
+    <p>You can watch here the results of the earlier solved LP problems. (Total: {{historyItemCount}})</p>
+    <div class="row">
+        <div class="col col-xl-2 col-lg-2 col-md-6 col-sm-9 xs-12">
+            <div class="row">
+                <div class="col col-6">
+                    <label>Number of items:&nbsp;</label>
+                </div>
+                <div class="col col-6">
+                    <input type="number" min="1" id="numberOfItems"/>
+                </div>
+                <div class="col col-1">
+                    <div class="btn btn-sm btn-primary" (click)="searchForHistory()">OK</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <h3>Found items</h3>
+    <div class="row">
+        <div class="col col-xl-6 col-lg-9 col-md-12 col-sm-12 col-xs-12 baseBox auctionsContainerBox onDashboard scrollable customScrollbar listBox">
+            <div *ngIf="historyReceived">
+                <div *ngFor="let historyItem of history" class="row mb-1 historyRow baseBox">
+                    <div class="col-5"><b>{{historyItem.name}}</b></div>
+                    <div class="col-5">Solved:&nbsp;{{historyItem.solvedAt.toLocaleString()}}</div>
+                    <div class="col-2"><a routerLink="/result/{{historyItem.id}}"><div class="btn btn-primary">See deatils</div></a></div>
+                </div>
+            </div>
+            <div *ngIf="!historyReceived">
+                Provide a number and click OK to see the history items.
+            </div>
+        </div>
+    </div>
+    <br>
+    <a routerLink="/" routerLinkActive="active"><button class="btn btn-primary btn-round">Go to dashboard</button></a>
+</div>

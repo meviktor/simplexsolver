@@ -33,5 +33,12 @@ namespace simplexapi.Operations
         public async Task<IEnumerable<LpTask>> Page(int from, int to) => await _ctx.LpTasks.OrderByDescending(lpTask => lpTask.SolvedAt).Skip(from).Take(to).ToListAsync();
 
         public async Task<IEnumerable<LpTask>> GetTheLast(int itemCount) => await Page(0, itemCount);
+
+        public async Task<IEnumerable<HistoryItemRowDto>> GetHistoryItems(int itemCount) => await _ctx.LpTasks
+                                                                                                    .OrderByDescending(lpTask => lpTask.SolvedAt)
+                                                                                                    .Select(lpTask => new HistoryItemRowDto { Id = lpTask.Id, Name = lpTask.Id.ToString(), SolvedAt = lpTask.SolvedAt })
+                                                                                                    .Take(itemCount)
+                                                                                                    .ToListAsync();
+        public async Task<int> ItemsTotal() => await _ctx.LpTasks.CountAsync();
     }
 }

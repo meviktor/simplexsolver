@@ -17,4 +17,12 @@ export class LpsolverService {
   getResult(taskId: any){
     return this.http.post<any>(`${environment.apiUrl}/taskresult?taskId=${taskId}`, {}).pipe(first());
   }
+
+  getTheLast(itemCount: any){
+    return this.http.post<any>(`${environment.apiUrl}/historyitems?itemCount=${itemCount}`, {});
+  }
+
+  numberOfHistoryItems(){
+    return this.http.post<any>(`${environment.apiUrl}/historyitemcount`, {}).pipe(first());
+  }
 }

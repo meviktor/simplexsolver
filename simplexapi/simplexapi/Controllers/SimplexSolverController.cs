@@ -86,5 +86,21 @@ namespace simplexapi.Controllers
                 solution = JsonConvert.DeserializeObject<LPTaskResultDto>(foundTask.SolutionAsJson)
             });
         }
+
+        public async Task<IActionResult> HistoryItems(int itemCount)
+        {
+            if(itemCount <= 0)
+            {
+                return BadRequest(new { message = "Count of history items must be a positive number!" });
+            }
+
+            var historyItems = await _lpTaskOperations.GetHistoryItems(itemCount);
+            return Json(historyItems);
+        }
+
+        public async Task<IActionResult> HistoryItemCount()
+        {
+            return Json(new { itemCount = await _lpTaskOperations.ItemsTotal() });
+        }
     }
 }

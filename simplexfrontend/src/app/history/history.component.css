@@ -1,0 +1,29 @@
+.historyRow{
+    background:  #5fb0ff;
+    padding: 5px;
+}
+
+.btn {
+    margin: 2px
+}
+
+.listBox{
+    padding: 10px !important;
+    min-height: 150px;
+    max-height: 350px;
+    background: #86c2ff;
+}
+
+h2 {
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+
+h3 {
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+.col {
+    padding: 0;
+}
