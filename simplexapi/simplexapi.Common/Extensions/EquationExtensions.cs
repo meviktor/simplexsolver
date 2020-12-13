@@ -127,7 +127,7 @@ namespace simplexapi.Common.Extensions
             return equation;
         }
 
-        public static Equation DeepCopy(this Equation equation)
+        public static Equation Copy(this Equation equation)
         {
             var leftSideCopy = new List<Term>();
             foreach(var term in equation.LeftSide)

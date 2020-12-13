@@ -9,5 +9,7 @@ namespace simplexapi.Models
         public string LPModelAsJson { get; set; }
 
         public string SolutionAsJson { get; set; }
+
+        public bool IntegerProgramming { get; set; }
     }
 }

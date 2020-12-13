@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using simplexapi.Common.Exceptions;
 using simplexapi.Common.Extensions;
+using simplexapi.Common.IP;
 using simplexapi.Common.Models;
 using simplexapi.Constants;
 using simplexapi.Models;
@@ -25,11 +26,12 @@ namespace simplexapi.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Solve([FromBody] LPModelDto lpModelDto)
+        public async Task<IActionResult> Solve([FromBody] LPModelDto lpModelDto, bool integerProgramming = false)
         {
             bool wrongFormat = false;
             string message = null;
             SimplexSolutionDto solution = null;
+            LPModel lpModel;
 
             try
             {
@@ -41,20 +43,36 @@ namespace simplexapi.Controllers
                 message = string.Format(Messages.WRONG_FORMAT_CHECK_ARG, e.ParamName);
             }
 
-            var lpModel = lpModelDto.MapTo(new LPModel());
-
-            try
+            if (integerProgramming)
             {
-                lpModel.TwoPhaseSimplex();
-                solution = lpModel.GetSolutionFromDictionary();
+                try
+                {
+                    lpModel = Gomory.RunGomory(lpModelDto);
+                }
+                catch (SimplexAlgorithmExectionException e)
+                {
+                    message = e.ExecutionError == SimplexAlgorithmExectionErrorType.NoSolution ?
+                           Messages.SIMPLEX_INT_RESULT_NO_SOLUTION :
+                           Messages.SIMPLEX_INT_RESULT_NO_LIMIT;
+                }
             }
-            catch (SimplexAlgorithmExectionException e)
+            else
             {
-                message = e.ExecutionError == SimplexAlgorithmExectionErrorType.NoSolution ?
-                       Messages.SIMPLEX_RESULT_NO_SOLUTION :
-                       Messages.SIMPLEX_RESULT_NO_LIMIT;
-            }
+                lpModel = lpModelDto.MapTo(new LPModel());
 
+                try
+                {
+                    lpModel.TwoPhaseSimplex();
+                    solution = lpModel.GetSolutionFromDictionary();
+                }
+                catch (SimplexAlgorithmExectionException e)
+                {
+                    message = e.ExecutionError == SimplexAlgorithmExectionErrorType.NoSolution ?
+                           Messages.SIMPLEX_RESULT_NO_SOLUTION :
+                           Messages.SIMPLEX_RESULT_NO_LIMIT;
+                }
+            }
+            
             if (wrongFormat)
             {
                 return BadRequest(new { success = false, message = message });
@@ -64,7 +82,8 @@ namespace simplexapi.Controllers
             {
                 LPModelAsJson = JsonConvert.SerializeObject(lpModelDto),
                 SolutionAsJson = JsonConvert.SerializeObject(new LPTaskResultDto{ SolutionFound = solution != null, Message = message, Solution = solution }),
-                SolvedAt = DateTimeOffset.Now
+                SolvedAt = DateTimeOffset.Now,
+                IntegerProgramming = integerProgramming
             };
 
             await _lpTaskOperations.Add(lpTask);
@@ -82,6 +101,7 @@ namespace simplexapi.Controllers
             return Json(new
             {
                 solvedAt = foundTask.SolvedAt,
+                integerProgramming = foundTask.IntegerProgramming,
                 lpModel = JsonConvert.DeserializeObject<LPModelDto>(foundTask.LPModelAsJson),
                 solution = JsonConvert.DeserializeObject<LPTaskResultDto>(foundTask.SolutionAsJson)
             });

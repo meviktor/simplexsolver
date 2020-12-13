@@ -3,15 +3,17 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using simplexapi.Data;
 
 namespace simplexapi.Migrations
 {
     [DbContext(typeof(SimplexSolverDbContext))]
-    partial class SimplexSolverDbContextModelSnapshot : ModelSnapshot
+    [Migration("20201213180240_Add_IntegerProgramming_LpTask")]
+    partial class Add_IntegerProgramming_LpTask
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -1,23 +1,16 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
 namespace simplexapi.Common.Models
 {
-    public struct Variable
+    public struct Variable : IEquatable<Variable>
     {
         public string Name { get; set; }
         public uint Index { get; set; }
 
-        public override bool Equals(object obj)
-        {
-            if (obj is Variable && obj != null)
-            {
-                var varToCompare = (Variable)obj;
-                return varToCompare.Name == this.Name && varToCompare.Index == this.Index;
-            }
-            return false;
-        }
+        public bool Equals(Variable other) => other.Name == this.Name && other.Index == this.Index;
 
         public override string ToString()
         {
@@ -25,7 +18,7 @@ namespace simplexapi.Common.Models
         }
     }
 
-    public class Term
+    public class Term : IEquatable<Term>
     {
         public Rational SignedCoefficient { get; set; }
         // if this field is null the term is a constant
@@ -38,6 +31,11 @@ namespace simplexapi.Common.Models
                 string.Format("{0}", SignedCoefficient.ToString());
         }
 
+        public bool Equals(Term other) => 
+            SignedCoefficient.Equals(other.SignedCoefficient) &&
+            ((this.Constant && other.Constant) || (!this.Constant && !other.Constant && this.Variable.Value.Equals(other.Variable.Value)));
+
+        public bool Constant => !Variable.HasValue;
     }
 
     public enum SideConnection
@@ -60,6 +58,13 @@ namespace simplexapi.Common.Models
         public IList<Term> LeftSide { get; set; }
         public IList<Term> RightSide { get; set; }
         public SideConnection SideConnection { get; set; }
+
+        public Equation()
+        {
+            LeftSide = new List<Term>();
+            RightSide = new List<Term>();
+            SideConnection = SideConnection.Equal;
+        }
 
         public override string ToString()
         {

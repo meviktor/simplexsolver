@@ -227,7 +227,7 @@ namespace simplexapi.Common.Extensions
             {
                 var newSlackVariable = new Variable { Name = model.AllVariables.First().Name, Index = model.AllVariables.Max(var => var.Index) + 1 };
                 // this line transfers the terms of the left side to the right side
-                constraint.Add(constraint.DeepCopy().LeftSide.Multiply(-1));
+                constraint.Add(constraint.Copy().LeftSide.Multiply(-1));
                 constraint.AddToLeft(new Term[] { new Term { SignedCoefficient = 1, Variable = newSlackVariable } });
                 constraint.SideConnection = SideConnection.Equal;
 
@@ -340,7 +340,7 @@ namespace simplexapi.Common.Extensions
                    {
                        LeftSide = new Term[] { new Term { SignedCoefficient = 1, Variable = new Variable { Name = model.FirstPhasefunctionVariableName.ToString(), Index = 0 } } },
                        SideConnection = SideConnection.Equal,
-                       RightSide = mostNegativeRightSidedConstraint.DeepCopy().RightSide.Multiply(-1) as IList<Term>
+                       RightSide = mostNegativeRightSidedConstraint.Copy().RightSide.Multiply(-1) as IList<Term>
                    }
                );
             #endregion

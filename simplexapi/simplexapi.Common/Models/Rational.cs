@@ -2,7 +2,7 @@
 
 namespace simplexapi.Common.Models
 {
-    public struct Rational : IComparable<Rational>
+    public struct Rational : IComparable<Rational>, IEquatable<Rational>
     {
         public int Numerator { get; private set; }
 
@@ -25,6 +25,13 @@ namespace simplexapi.Common.Models
             Numerator = numerator;
             Denominator = denominator;
         }
+
+        public bool Integer => this.Simplify().Denominator == 1;
+
+        /// <summary>
+        /// The numerator and the denominator have the same sign (positive or negative) or not.
+        /// </summary>
+        public bool SameSigned => (Numerator >= 0 && Denominator > 0) || (Numerator < 0 && Denominator < 0);
 
         public static Rational Zero => new Rational(0);
 
@@ -92,16 +99,18 @@ namespace simplexapi.Common.Models
             new Rational(b.Numerator * a.Denominator, a.Denominator * b.Denominator)
         );
 
-        public override string ToString()
+        public override string ToString() => NumericValue % 1 == 0 ? NumericValue.ToString("+#;-#;0") : $"{(SameSigned ? "+" : "-")}({Math.Abs(Numerator)}/{Math.Abs(Denominator)})";
+
+        public override bool Equals(object obj) => obj is Rational ? Equals((Rational)obj) : false;
+
+        public bool Equals(Rational other)
         {
-            bool sameSigned = (Numerator >= 0 && Denominator > 0) || (Numerator < 0 && Denominator < 0);
-            return NumericValue % 1 == 0 ? NumericValue.ToString("+#;-#;0") : $"{(sameSigned ? "+" : "-")}({Math.Abs(Numerator)}/{Math.Abs(Denominator)})";
+            var simpleThis = this.Simplify();
+            var simpleOther = other.Simplify();
+            return simpleThis.Numerator == simpleOther.Numerator && simpleThis.Denominator == simpleOther.Denominator;
         }
 
-        public int CompareTo(Rational other)
-        {
-            return (this < other) ? -1 : ((this == other) ? 0 : 1);
-        }
+        public int CompareTo(Rational other) => (this < other) ? -1 : ((this == other) ? 0 : 1);
     }
 
     public static class RationalExtensions
@@ -111,7 +120,9 @@ namespace simplexapi.Common.Models
         public static Rational Simplify(this Rational rational)
         {
             uint greatestCommonDivisor = Euclidean((uint)Math.Abs(rational.Numerator), (uint)Math.Abs(rational.Denominator));
-            return new Rational((int)(rational.Numerator / greatestCommonDivisor), (int)(rational.Denominator / greatestCommonDivisor));
+            var simplest = new Rational((int)(rational.Numerator / greatestCommonDivisor), (int)(rational.Denominator / greatestCommonDivisor));
+            return simplest.SameSigned ? simplest.Abs() :
+                simplest.Denominator < 0 ? new Rational(-simplest.Numerator, -simplest.Denominator) : simplest;
         }
 
         private static uint Euclidean(uint a, uint b)
