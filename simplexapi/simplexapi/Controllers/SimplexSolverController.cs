@@ -26,12 +26,10 @@ namespace simplexapi.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Solve([FromBody] LPModelDto lpModelDto, bool integerProgramming = false)
+        public IActionResult DualSimplex([FromBody] LPModelDto lpModelDto)
         {
             bool wrongFormat = false;
             string message = null;
-            SimplexSolutionDto solution = null;
-            LPModel lpModel;
 
             try
             {
@@ -41,6 +39,51 @@ namespace simplexapi.Controllers
             {
                 wrongFormat = true;
                 message = string.Format(Messages.WRONG_FORMAT_CHECK_ARG, e.ParamName);
+            }
+
+            if (wrongFormat)
+            {
+                return BadRequest(new { success = false, message = message });
+            }
+
+            var lpModel = lpModelDto.MapTo(new LPModel());
+
+            try
+            {
+                lpModel.DualSimplex();
+                var solution = lpModel.GetSolutionFromDictionary();
+            }
+            catch (SimplexAlgorithmExectionException e)
+            {
+                message = e.ExecutionError == SimplexAlgorithmExectionErrorType.NoSolution ?
+                       Messages.SIMPLEX_RESULT_NO_SOLUTION :
+                       Messages.SIMPLEX_RESULT_NO_LIMIT;
+            }
+
+            return Json(new { success = true, message = message});
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Solve([FromBody] LPModelDto lpModelDto, bool integerProgramming = false)
+        {
+            bool wrongFormat = false;
+            string message = null;
+            SimplexSolutionDto solution = null;
+            LPModel lpModel = null;
+
+            try
+            {
+                lpModelDto.Validate();
+            }
+            catch (ArgumentException e)
+            {
+                wrongFormat = true;
+                message = string.Format(Messages.WRONG_FORMAT_CHECK_ARG, e.ParamName);
+            }
+
+            if (wrongFormat)
+            {
+                return BadRequest(new { success = false, message = message });
             }
 
             if (integerProgramming)
@@ -63,7 +106,6 @@ namespace simplexapi.Controllers
                 try
                 {
                     lpModel.TwoPhaseSimplex();
-                    solution = lpModel.GetSolutionFromDictionary();
                 }
                 catch (SimplexAlgorithmExectionException e)
                 {
@@ -71,12 +113,18 @@ namespace simplexapi.Controllers
                            Messages.SIMPLEX_RESULT_NO_SOLUTION :
                            Messages.SIMPLEX_RESULT_NO_LIMIT;
                 }
+                catch(Exception)
+                {
+                    message = Messages.GENERAL_ERROR;
+                }
             }
-            
-            if (wrongFormat)
+
+            if(message == Messages.GENERAL_ERROR)
             {
-                return BadRequest(new { success = false, message = message });
+                return StatusCode(500, new { success = false, message = message });
             }
+
+            solution = lpModel.GetSolutionFromDictionary();
 
             var lpTask = new LpTask
             {

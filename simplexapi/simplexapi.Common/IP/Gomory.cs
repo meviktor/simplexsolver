@@ -12,7 +12,7 @@ namespace simplexapi.Common.IP
         {
             Func<LPModel, IEnumerable<Equation>> findEquationsWithFractionConstant = (lm) => lm.Constraints.Where(
                 dictionaryRow => IsDecisionVariable(dictionaryRow.LeftSide.Single().Variable.Value, lm) &&
-                                 !dictionaryRow.RightSide.Single(term => term.Constant).SignedCoefficient.Integer
+                                 !(dictionaryRow.RightSide.SingleOrDefault(term => term.Constant)?.SignedCoefficient.Integer ?? true) // if no contstant term can be found it is equivalent with the zero constant
             );
             LPModel lpModel;
             IEnumerable<Equation> equationsWithFractionConstant;
@@ -31,9 +31,18 @@ namespace simplexapi.Common.IP
                 gomoryConstraints.Add(MakeGomoryConstraint(eqWithFracConst));
 
                 lpModel = dto.MapTo(new LPModel());
-                gomoryConstraints.ForAll(constraint => lpModel.Constraints.Add(constraint.Copy()));
+                gomoryConstraints.ForAll(constraint =>
+                {
+                    lpModel.Constraints.Add(constraint.Copy());
+                    var newVariablesFromGomoryConstraint = constraint.LeftSide.Select(term => term.Variable).Where(variable => !lpModel.AllVariables.Contains(variable.Value));
+                    newVariablesFromGomoryConstraint.ForAll(variable => 
+                    { 
+                        lpModel.AllVariables.Add(variable.Value);
+                        lpModel.InterpretationRanges.Add(variable.Value.GreaterOrEqualThanZeroRange());
+                    });
+                });
 
-                lpModel.TwoPhaseSimplex();
+                lpModel.DualSimplex();
                 equationsWithFractionConstant = findEquationsWithFractionConstant(lpModel);
             }
             // only integers we are done...
