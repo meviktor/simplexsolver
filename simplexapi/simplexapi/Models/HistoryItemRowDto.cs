@@ -9,5 +9,7 @@ namespace simplexapi.Models
         public DateTimeOffset SolvedAt { get; set; }
 
         public string Name { get; set; }
+
+        public bool IntegerProgramming { get; set; }
     }
 }

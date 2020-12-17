@@ -8,6 +8,7 @@ import { ResultComponent } from './result/result.component';
 const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'solve', component: LpModelCreatorComponent },
+  { path: 'solve/integerprogramming', component: LpModelCreatorComponent },
   { path: 'result/:id', component: ResultComponent },
   { path: 'history', component: HistoryComponent },
   { path: '*', redirectTo: '' }

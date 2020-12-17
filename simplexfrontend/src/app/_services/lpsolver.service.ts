@@ -10,8 +10,8 @@ export class LpsolverService {
 
   constructor(private http: HttpClient) { }
 
-  solveLP(lpModelQuery: any){
-    return this.http.post<any>(`${environment.apiUrl}/solve`, lpModelQuery).pipe(first());
+  solveLP(lpModelQuery: any, ip: boolean){
+    return this.http.post<any>(`${environment.apiUrl}/solve?integerprogramming=${ip}`, lpModelQuery).pipe(first());
   }
 
   getResult(taskId: any){

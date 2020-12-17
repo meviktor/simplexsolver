@@ -1,6 +1,7 @@
 <div *ngIf="initialized" id="mainframe">
     <h2>Result</h2>
-    <h3>The provided LP model</h3>
+    <h3 *ngIf="!lpTaskResult.integerProgramming">The provided LP model</h3>
+    <h3 *ngIf="lpTaskResult.integerProgramming">The provided integer programming task</h3>
     <p>Constraints:</p>
     <div class="row">
         <div class="col col-xl-6 col-lg-6 col-md-12 col-sm-12 col-xs-12">
@@ -76,7 +77,7 @@
             <p>{{lpTaskResult.solution.message}}</p>
         </div>
         <div *ngIf="lpTaskResult.solution.solutionFound">
-            <div id="resultTypeSelectorBox"><input type="checkbox" (change)="showAsFractionChanged()"> Show results as fractions</div>
+            <div *ngIf="!lpTaskResult.integerProgramming" id="resultTypeSelectorBox"><input type="checkbox" (change)="showAsFractionChanged()"> Show results as fractions</div>
             <div class="row">
                 <div class="col col-xl-4 col-lg-4 col-md-8 col-sm-8 col-xs-12">
                     <div class="row">

@@ -8,6 +8,8 @@ import { LpsolverService } from '../_services/lpsolver.service';
   styleUrls: ['./lp-model-creator.component.css']
 })
 export class LpModelCreatorComponent implements OnInit {
+  iptask: boolean = window.location.href.split("/").pop() == "integerprogramming";
+
   readonly NOT_INTEGER_ERROR_MSG = "You have to provide an integer! Position of the error: ";
 
   readonly MIN_NUM_DECISIONVARS = 2;
@@ -25,7 +27,7 @@ export class LpModelCreatorComponent implements OnInit {
   readonly interpretationRangeClassName: string = "interpretationRange";
   readonly sideConnectionClassName: string = "sideConnection";
   readonly optimizationAimSelectId: string = "optimizationAim";
-  readonly possibleSideConnections: string[] = ["<=", "=", ">="];
+  readonly possibleSideConnections: string[] = this.iptask ? ["<="] : ["<=", "=", ">="];
   readonly possibleSides: string[] = ["leftSide", "rightSide"];
 
   numberOfDecisionVariables: number = 0;
@@ -59,7 +61,7 @@ export class LpModelCreatorComponent implements OnInit {
     }
 
     if(successfullyValidated){
-      this.lpSolverService.solveLP(requestObject)
+      this.lpSolverService.solveLP(requestObject, this.iptask)
         .subscribe(response => {
           if(response.success){
             this.router.navigateByUrl(`/result/${response.taskId}`);
@@ -95,9 +97,10 @@ export class LpModelCreatorComponent implements OnInit {
     var objectiveFunctionGridHtml = this.buildObjectiveFunctionGrid();
     this.setObjectiveContainerContent(objectiveFunctionGridHtml);
 
-    var interpretationRangesGridHtml = this.buildInterpretationRangesGrid();
-    this.setInterpretationRangesContainerContent(interpretationRangesGridHtml);
-
+    if(!this.iptask){
+      var interpretationRangesGridHtml = this.buildInterpretationRangesGrid();
+      this.setInterpretationRangesContainerContent(interpretationRangesGridHtml);
+    }
     this.showElementById("constraintsObjectiveInterpretationContainer");
   }
 
@@ -136,8 +139,8 @@ export class LpModelCreatorComponent implements OnInit {
           <label>Relation:</label>
           <select class="${this.sideConnectionClassName}" ${this.constraintAttributeName}="${constraintNo}">
             <option value="${this.possibleSideConnections[0]}">${this.possibleSideConnections[0]}</option>
-            <option value="${this.possibleSideConnections[1]}">${this.possibleSideConnections[1]}</option>
-            <option value="${this.possibleSideConnections[2]}">${this.possibleSideConnections[2]}</option>
+            ${this.iptask ? "" : `<option value="${this.possibleSideConnections[1]}">${this.possibleSideConnections[1]}</option>
+                                  <option value="${this.possibleSideConnections[2]}">${this.possibleSideConnections[2]}</option>`}
           </select>
         </div>
       </div>`;
@@ -178,7 +181,7 @@ export class LpModelCreatorComponent implements OnInit {
       <div class="form-group">
         <label>Aim:</label>
         <select id="${this.optimizationAimSelectId}">
-          <option value=true>Max.</option>
+          ${this.iptask ? "" : `<option value=true>Max.</option>`}
           <option value=false>Min.</option>
         </select>
       </div>
@@ -247,7 +250,13 @@ export class LpModelCreatorComponent implements OnInit {
     this.loadConstraintLeftSideMaxtrixFromView();
     this.loadConstraintsRightVectorFromView();
     this.loadObjectiveCoefficientVectorFromView();
-    this.loadInterpretationRangeVectorFromView();
+
+    if(!this.iptask){
+      this.loadInterpretationRangeVectorFromView();
+    }
+    else{
+      this.interpretationRangeVector = new Array(this.numberOfDecisionVariables).fill(0);
+    }
 
     this.loadConstraintConnectionsVectorFromView();
     this.loadOptimizationAimFromView();

@@ -1,5 +1,6 @@
 <div id="solverRoot">
-    <div class="pageTitle"><h2>LP model editor</h2></div>
+    <div *ngIf="!iptask" class="pageTitle"><h2>LP model editor</h2></div>
+    <div *ngIf="iptask" class="pageTitle"><h2>Provide integer programming problem</h2></div>
     <div id="lpModelEditorRoot">
         <div id="numOfDecisionVariablesAndConstraintsContainer" class="card baseBox lpModelEditorBox">
             <div class="card-header" id="basicParams">
@@ -41,15 +42,24 @@
                 <div id="collapseConstraintsAndObjective" class="collapse">
                     <div class="card-body">
                         <h3>Constraints</h3>
-                        <p>
+                        <p *ngIf="!iptask">
                             Here you can provide the constraints of the LP problem. Set the coefficients of the decision variables in the constraints. 
+                            Field left as empty means that the decision variable has a zero coefficient in the current constraint. 
+                            The same is true to the right side constant of the constraints.
+                        </p>
+                        <p *ngIf="iptask">
+                            Here you can provide the constraints of the integer programming problem. Set the coefficients of the decision variables in the constraints. 
                             Field left as empty means that the decision variable has a zero coefficient in the current constraint. 
                             The same is true to the right side constant of the constraints.
                         </p>
                         <div id="constraintsContainer"></div>
                         <h3>Objective</h3>
-                        <p>
+                        <p *ngIf=!iptask>
                             Here you can provide the coefficients of the decision variables of the objective function and the optimization aim. 
+                            If you leave a field empty has the same effect if you wrote a zero into it.
+                        </p>
+                        <p *ngIf=iptask>
+                            Here you can provide the coefficients of the decision variables of the objective function. 
                             If you leave a field empty has the same effect if you wrote a zero into it.
                         </p>
                         <div id="objectiveContainer"></div>
@@ -66,12 +76,15 @@
                 </div>
                 <div id="collapseInterpretationRanges" class="collapse">
                     <div class="card-body">
-                        <p>
+                        <p *ngIf="!iptask">
                             Here you can provide the interpretaion ranges of the decision variables by determining the lower bound of their interpretation ranges. 
                             So you gave a constraint having an "x >= y" form where x is the decison variable whose lower bound is set for and y is the value you provide as a lower bound. 
                             If you leave a box empty that means the decision variable has no limit (lower bound).
                         </p>
-                        <div class="row mb-1">
+                        <p *ngIf="iptask">
+                            The interpretation range will be interpreted as ">= 0" for every decision variable implicitly.
+                        </p>
+                        <div *ngIf="!iptask" class="row mb-1">
                             <div id="interpretationRangesContainer"></div>
                         </div>
                     </div>

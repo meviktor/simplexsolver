@@ -36,7 +36,7 @@ namespace simplexapi.Operations
 
         public async Task<IEnumerable<HistoryItemRowDto>> GetHistoryItems(int itemCount) => await _ctx.LpTasks
                                                                                                     .OrderByDescending(lpTask => lpTask.SolvedAt)
-                                                                                                    .Select(lpTask => new HistoryItemRowDto { Id = lpTask.Id, Name = lpTask.Id.ToString(), SolvedAt = lpTask.SolvedAt })
+                                                                                                    .Select(lpTask => new HistoryItemRowDto { Id = lpTask.Id, Name = lpTask.Id.ToString(), SolvedAt = lpTask.SolvedAt, IntegerProgramming = lpTask.IntegerProgramming })
                                                                                                     .Take(itemCount)
                                                                                                     .ToListAsync();
         public async Task<int> ItemsTotal() => await _ctx.LpTasks.CountAsync();
