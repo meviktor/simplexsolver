@@ -51,7 +51,7 @@ namespace simplexapi.Controllers
             try
             {
                 lpModel.DualSimplex();
-                var solution = lpModel.GetSolutionFromDictionary();
+                var solution = lpModel.GetSolutionFromDictionary(lpModelDto.MapTo(new LPModel()).Objective.Function);
             }
             catch (SimplexAlgorithmExectionException e)
             {
@@ -124,7 +124,7 @@ namespace simplexapi.Controllers
                 return StatusCode(500, new { success = false, message = message });
             }
 
-            solution = lpModel.GetSolutionFromDictionary();
+            solution = lpModel.GetSolutionFromDictionary(lpModelDto.MapTo(new LPModel()).Objective.Function);
 
             var lpTask = new LpTask
             {

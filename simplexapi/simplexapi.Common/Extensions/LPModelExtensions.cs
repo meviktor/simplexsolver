@@ -87,7 +87,7 @@ namespace simplexapi.Common.Extensions
         /// </summary>
         /// <param name="model">The LP model.</param>
         /// <returns>A <see cref="SimplexSolutionDto"></see> containing the solution. </returns>
-        public static SimplexSolutionDto GetSolutionFromDictionary(this LPModel model)
+        public static SimplexSolutionDto GetSolutionFromDictionary(this LPModel model, Equation objectiveFunction)
         {
             var decisionVariableValues = new List<VariableValuePairDto>();
 
@@ -158,10 +158,14 @@ namespace simplexapi.Common.Extensions
                 }
             });
 
-            return new SimplexSolutionDto(
-                new RationalDto { Numerator = model.Objective.FunctionValue.Numerator, Denominator = model.Objective.FunctionValue.Denominator},
-                decisionVariableValues
-            );
+            Rational objFuncVal = 0;
+            objectiveFunction.RightSide.Where(term => !term.Constant).ForAll(term =>
+            {
+                var valueFromSolution = decisionVariableValues.Single(dvv => dvv.Variable.Index == term.Variable.Value.Index).Value;
+                objFuncVal += term.SignedCoefficient * new Rational(valueFromSolution.Numerator, valueFromSolution.Denominator);
+            });
+
+            return new SimplexSolutionDto(new RationalDto { Numerator = objFuncVal.Numerator, Denominator = objFuncVal.Denominator }, decisionVariableValues);
         }
 
         /// <summary>
