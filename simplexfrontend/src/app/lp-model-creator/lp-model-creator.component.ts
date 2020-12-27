@@ -319,7 +319,7 @@ export class LpModelCreatorComponent implements OnInit {
 
   private loadOptimizationAimFromView(): void {
     var cell = document.getElementById(this.optimizationAimSelectId) as HTMLSelectElement;
-    this.maximization = Boolean(cell.options[cell.selectedIndex].value);
+    this.maximization = Boolean(JSON.parse(cell.value));
   }
 
   private loadObjectiveCoefficientVectorFromView(): void {

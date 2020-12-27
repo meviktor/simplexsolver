@@ -106,6 +106,7 @@ namespace simplexapi.Controllers
                 try
                 {
                     lpModel.TwoPhaseSimplex();
+                    solution = lpModel.GetSolutionFromDictionary(lpModelDto.MapTo(new LPModel()).Objective.Function);
                 }
                 catch (SimplexAlgorithmExectionException e)
                 {
@@ -123,8 +124,6 @@ namespace simplexapi.Controllers
             {
                 return StatusCode(500, new { success = false, message = message });
             }
-
-            solution = lpModel.GetSolutionFromDictionary(lpModelDto.MapTo(new LPModel()).Objective.Function);
 
             var lpTask = new LpTask
             {

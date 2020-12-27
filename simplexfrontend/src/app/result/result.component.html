@@ -73,7 +73,6 @@
     <h3>Solution</h3>
     <div>
         <div *ngIf="!lpTaskResult.solution.solutionFound">
-            <p>The provided LP model has no solution.</p>
             <p>{{lpTaskResult.solution.message}}</p>
         </div>
         <div *ngIf="lpTaskResult.solution.solutionFound">
@@ -88,8 +87,8 @@
                     </div>
                 </div>
             </div>
+            <p>Objective function value: <b>{{ showAsFractions ? fractionForm(lpTaskResult.solution.solution.objectiveFunctionValue.numerator, lpTaskResult.solution.solution.objectiveFunctionValue.denominator) : decimalForm(lpTaskResult.solution.solution.objectiveFunctionValue.numerator, lpTaskResult.solution.solution.objectiveFunctionValue.denominator) }}</b></p>
         </div>
-        <p>Objective function value: <b>{{ showAsFractions ? fractionForm(lpTaskResult.solution.solution.objectiveFunctionValue.numerator, lpTaskResult.solution.solution.objectiveFunctionValue.denominator) : decimalForm(lpTaskResult.solution.solution.objectiveFunctionValue.numerator, lpTaskResult.solution.solution.objectiveFunctionValue.denominator) }}</b></p>
     </div>
     <p>Solved at: {{lpTaskResult.solvedAt}}</p>
     <div class="row">

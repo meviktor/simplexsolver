@@ -129,6 +129,8 @@ namespace simplexapi.Common.Models
                 }
             });
 
+            model.StandardFormAliases = new List<Equation>();
+
             List<Term> objectiveRightSide = new List<Term>();
             Enumerable.Range(0, (int)dto.NumberOfDecisionVariables).ForAll(k =>
             {

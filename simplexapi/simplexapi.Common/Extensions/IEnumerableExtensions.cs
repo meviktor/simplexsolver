@@ -49,6 +49,23 @@ namespace simplexapi.Common.Extensions
         }
 
         /// <summary>
+        /// Creates the deep copy of an <see cref="Equation"></see> collection.
+        /// </summary>
+        /// <param name="expression">The expression wanted to be copied.</param>
+        /// <returns>The deep copy of the expression.</returns>
+        public static IEnumerable<Equation> Copy(this IEnumerable<Equation> expression)
+        {
+            List<Equation> result = new List<Equation>();
+            expression.ForAll(equation => result.Add(new Equation
+            {
+                LeftSide = equation.LeftSide.Copy() as IList<Term>,
+                RightSide = equation.RightSide.Copy() as IList<Term>,
+                SideConnection = equation.SideConnection
+            }));
+            return result;
+        }
+
+        /// <summary>
         /// Summarizes a buch of <see cref="Rational"/> numbers selected by the selector expression.
         /// </summary>
         /// <param name="collection"></param>

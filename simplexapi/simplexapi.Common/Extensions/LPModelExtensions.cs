@@ -99,7 +99,7 @@ namespace simplexapi.Common.Extensions
                 // value of a basis variable: the constant of its equation/constraint
                 if (isBasisVariable)
                 {
-                    var value = model.Constraints.Single(constraint => leftSideVariable(constraint, decisionVariable)).RightSide.Single(term => term.Constant).SignedCoefficient;
+                    var value = model.Constraints.Single(constraint => leftSideVariable(constraint, decisionVariable)).RightSide.SingleOrDefault(term => term.Constant)?.SignedCoefficient ?? 0;
                     decisionVariableValues.Add( new VariableValuePairDto
                     {
                        Variable = new VariableDto { Index = decisionVariable.Index, Name = decisionVariable.Name },
@@ -176,27 +176,27 @@ namespace simplexapi.Common.Extensions
         public static LPModel AsStandard(this LPModel model)
         {
             #region transforming equations to inequations
-            var eqConstraints = model.Constraints.Where(constraint => constraint.SideConnection == SideConnection.Equal);
+            var eqConstraints = model.Constraints.Where(constraint => constraint.SideConnection == SideConnection.Equal).Copy();
             foreach (var constraint in eqConstraints)
             {
                 model.Constraints.Add(
                     new Equation
                     {
-                        LeftSide = constraint.LeftSide.ToList(),
+                        LeftSide = constraint.LeftSide.ToList().Copy() as IList<Term>,
                         SideConnection = SideConnection.LessThanOrEqual,
-                        RightSide = constraint.RightSide.ToList()
+                        RightSide = constraint.RightSide.ToList().Copy() as IList<Term>
                     }
                 );
                 model.Constraints.Add(
                     new Equation
                     {
-                        LeftSide = constraint.LeftSide.ToList(),
+                        LeftSide = constraint.LeftSide.ToList().Copy() as IList<Term>,
                         SideConnection = SideConnection.GreaterThanOrEqual,
-                        RightSide = constraint.RightSide.ToList()
+                        RightSide = constraint.RightSide.ToList().Copy() as IList<Term>
                     }
                 );
-                model.Constraints.Remove(constraint);
             }
+            ((List<Equation>)model.Constraints).RemoveAll(constraint => constraint.SideConnection == SideConnection.Equal);
             #endregion
 
             #region changing limitless variables or variables with non-zero lower bound to new ones having zero lower bound
@@ -224,11 +224,12 @@ namespace simplexapi.Common.Extensions
                     {
                         constraint.ReplaceVarWithExpression(variableAndRange.Key, alias.RightSide);
                     }
+                    model.Objective.Function.ReplaceVarWithExpression(variableAndRange.Key, alias.RightSide);
                 }
                 else
                 {
-                    var newVariable1 = new Variable { Name = variableAndRange.Value.LeftSide.First().Variable.Value.Name, Index = model.AllVariables.Max(var => var.Index) + 1 };
-                    var newVariable2 = new Variable { Name = variableAndRange.Value.LeftSide.First().Variable.Value.Name, Index = model.AllVariables.Max(var => var.Index) + 2 };
+                    var newVariable1 = new Variable { Name = variableAndRange.Key.Name, Index = model.AllVariables.Max(var => var.Index) + 1 };
+                    var newVariable2 = new Variable { Name = variableAndRange.Key.Name, Index = model.AllVariables.Max(var => var.Index) + 2 };
                     var alias = new Equation
                     {
                         // e.g. x1 = x2 - x3 (<limitless_var> = <zero_limit_var1> - <zero_limit_var2>
@@ -248,6 +249,7 @@ namespace simplexapi.Common.Extensions
                     {
                         constraint.ReplaceVarWithExpression(variableAndRange.Key, alias.RightSide);
                     }
+                    model.Objective.Function.ReplaceVarWithExpression(variableAndRange.Key, alias.RightSide);
                 }
             }
             #endregion
@@ -345,7 +347,7 @@ namespace simplexapi.Common.Extensions
             #endregion
 
             #region Expressing the var0 variable from the constraint which has the most negative right side
-            var mostNegativeRightSidedConstraint = model.Constraints.OrderBy(constraint => constraint.RightSide.Single(term => term.Constant).SignedCoefficient).First();
+            var mostNegativeRightSidedConstraint = model.Constraints.OrderBy(constraint => constraint.RightSide.SingleOrDefault(term => term.Constant)?.SignedCoefficient ?? 0).First();
             // on the right side there must be only one single constant (and nothing else) anyway
             var rightSideConstant = mostNegativeRightSidedConstraint.RightSide.Single(term => term.Constant);
 
@@ -361,7 +363,7 @@ namespace simplexapi.Common.Extensions
                 {
                     // we have added the slack variables to the constraints after the var0 and the decision variables - so the slack variable must have the highest index in the constraint
                     var slackVariableTerm = constraint.LeftSide.OrderByDescending(term => term.Variable.Value.Index).First();
-                    var constantOnRight = constraint.RightSide.Single(term => term.Constant);
+                    var constantOnRight = constraint.RightSide.SingleOrDefault(term => term.Constant) ?? new Term { SignedCoefficient = 0 };
 
                     constraint.Add(new Term[] { new Term { SignedCoefficient = slackVariableTerm.SignedCoefficient * -1, Variable = slackVariableTerm.Variable } });
                     constraint.Add(new Term[] { new Term { SignedCoefficient = constantOnRight.SignedCoefficient * -1 } });
@@ -419,12 +421,12 @@ namespace simplexapi.Common.Extensions
                                                            .SingleOrDefault();
 
             var var0 = new Variable { Name = model.AllVariables.First().Name, Index = 0 };
-            if (constraintToRemove != null)
+            if (constraintWithVar0Basis != null)
             {
                 // choosing the variable has a negative coefficient and the smallest index
                 var newBasisVariable = constraintWithVar0Basis.RightSide
                     .Where(term => term.Variable.Value.Index == constraintWithVar0Basis.RightSide
-                        .Where(t => t.Variable.HasValue && t.SignedCoefficient < 0)
+                        .Where(t => t.Variable.HasValue /*&& t.SignedCoefficient < 0*/)
                         .Min(t => t.Variable.Value.Index))
                     .Single().Variable.Value;
 
