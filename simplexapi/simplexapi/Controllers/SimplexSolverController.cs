@@ -91,6 +91,7 @@ namespace simplexapi.Controllers
                 try
                 {
                     lpModel = Gomory.RunGomory(lpModelDto);
+                    solution = lpModel.GetSolutionFromDictionary(lpModelDto.MapTo(new LPModel()).Objective.Function);
                 }
                 catch (SimplexAlgorithmExectionException e)
                 {

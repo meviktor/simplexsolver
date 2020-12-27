@@ -16,7 +16,7 @@ namespace simplexapi.Common.IP
             );
             LPModel lpModel;
             IEnumerable<Equation> equationsWithFractionConstant;
-            IList<Equation> gomoryConstraints = new List<Equation>();
+            //IList<Equation> gomoryConstraints = new List<Equation>();
 
             lpModel = dto.MapTo(new LPModel());
             lpModel.TwoPhaseSimplex();
@@ -24,26 +24,42 @@ namespace simplexapi.Common.IP
             // constraints are in dictionary form here... we need those rows where the contstant is not an integer
             equationsWithFractionConstant = findEquationsWithFractionConstant(lpModel);
 
+            #region Changing aim to minimize
+            lpModel.ChangeOptimizationAimTo(OptimizationAim.Minimize);
+            #endregion
+
             while (equationsWithFractionConstant.Any())
             {
                 // its form like (dictionary row): <basis variable> = <constant> +/- <coefficient><non-basis variable> +/- ... +/- <coefficient><non-basis variable>
                 var eqWithFracConst = equationsWithFractionConstant.First();
-                gomoryConstraints.Add(MakeGomoryConstraint(eqWithFracConst));
 
-                lpModel = dto.MapTo(new LPModel());
-                gomoryConstraints.ForAll(constraint =>
-                {
-                    lpModel.Constraints.Add(constraint.Copy());
-                    var newVariablesFromGomoryConstraint = constraint.LeftSide.Select(term => term.Variable).Where(variable => !lpModel.AllVariables.Contains(variable.Value));
-                    newVariablesFromGomoryConstraint.ForAll(variable => 
-                    { 
-                        lpModel.AllVariables.Add(variable.Value);
-                        lpModel.InterpretationRanges.Add(variable.Value.GreaterOrEqualThanZeroRange());
-                    });
+                var varForGomory = new Variable { Name = lpModel.DecisionVariableName.ToString(), Index = lpModel.AllVariables.Max(var => var.Index) + 1 };
+                var gomoryConstraint = MakeGomoryConstraint(eqWithFracConst);
+                gomoryConstraint.Add(gomoryConstraint.LeftSide.Copy().Multiply(-1));
+                gomoryConstraint.LeftSide.Add(new Term { 
+                    SignedCoefficient = 1,
+                    Variable = varForGomory
                 });
+                gomoryConstraint.SideConnection = SideConnection.Equal;
+                lpModel.Constraints.Add(gomoryConstraint);
+
+                lpModel.AllVariables.Add(varForGomory);
+                lpModel.InterpretationRanges.Add(varForGomory.GreaterOrEqualThanZeroRange());
 
                 lpModel.DualSimplex();
                 equationsWithFractionConstant = findEquationsWithFractionConstant(lpModel);
+
+                /*lpModel = dto.MapTo(new LPModel());
+               gomoryConstraints.ForAll(constraint =>
+               {
+                   lpModel.Constraints.Add(constraint.Copy());
+                   var newVariablesFromGomoryConstraint = constraint.LeftSide.Select(term => term.Variable).Where(variable => !lpModel.AllVariables.Contains(variable.Value));
+                   newVariablesFromGomoryConstraint.ForAll(variable => 
+                   { 
+                       lpModel.AllVariables.Add(variable.Value);
+                       lpModel.InterpretationRanges.Add(variable.Value.GreaterOrEqualThanZeroRange());
+                   });
+               });*/
             }
             // only integers we are done...
             return lpModel;
@@ -69,8 +85,14 @@ namespace simplexapi.Common.IP
             // on the right side only the constant term could be found
             var rightSideBase = eqWithFracConst.RightSide.Where(term => term.Constant).Copy().ToList();
 
-            leftSideBase.ForAll(term => term.SignedCoefficient = GetFraction(term.SignedCoefficient));
-            rightSideBase.ForAll(term => term.SignedCoefficient = GetFraction(term.SignedCoefficient));
+            leftSideBase.ForAll(term =>
+            {
+                term.SignedCoefficient = GetFraction(term.SignedCoefficient);
+            });
+            rightSideBase.ForAll(term => 
+            { 
+                term.SignedCoefficient = GetFraction(term.SignedCoefficient);
+            });
 
             newGomoryConstraint = new Equation
             {

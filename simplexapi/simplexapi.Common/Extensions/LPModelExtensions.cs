@@ -18,12 +18,6 @@ namespace simplexapi.Common.Extensions
         /// <returns>The LP model</returns>
         public static LPModel DualSimplex(this LPModel model)
         {
-            model.AsStandard().AsDictionary();
-
-            #region Changing aim to minimize
-            model.ChangeOptimizationAimTo(OptimizationAim.Minimize);
-            #endregion
-
             while (!model.AllBasisVariableHaveNonNegativeValuesInTheDictionary())
             {
                 #region Choosing variable will step out from the base - choosing the dictionary row having the most negative index - we will choose the lowest index anyway
@@ -463,7 +457,7 @@ namespace simplexapi.Common.Extensions
         /// </summary>
         /// <param name="model">The LP model whose optimization aim will be changed.</param>
         /// <returns>The LP model having the selected optimization aim.</returns>
-        private static LPModel ChangeOptimizationAimTo(this LPModel model, OptimizationAim aim)
+        internal static LPModel ChangeOptimizationAimTo(this LPModel model, OptimizationAim aim)
         {
             if (model.Objective.Aim != aim)
             {
