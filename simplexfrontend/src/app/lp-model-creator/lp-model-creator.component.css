@@ -4,6 +4,7 @@
 
 #solverRoot{
     margin: 10px;
+    min-height: 90%;
 }
 
 #setBasicParamsBtn{
