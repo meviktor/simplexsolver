@@ -28,8 +28,13 @@ namespace simplexapi.Common.Extensions
                                                        .First().Variable;
                 #endregion
 
-                #region Choosing the variable will step in the basis - by finding the smallest quotient
                 var rowWithStepOutVariable = model.Constraints.Single(row => row.LeftSide.Single().Variable.Value.Equals(stepOutVariable));
+                if(rowWithStepOutVariable.RightSide.Where(term => !term.Constant).All(term => term.SignedCoefficient < 0))
+                {
+                    throw new SimplexAlgorithmExectionException(SimplexAlgorithmExectionErrorType.NoSolution);
+                }
+
+                #region Choosing the variable will step in the basis - by finding the smallest quotient
                 var termsWithPositiveCoefficient = rowWithStepOutVariable.RightSide.Where(term => term.SignedCoefficient > 0 && !term.Constant);
                 var varsWithQuotient = new Dictionary<Variable, Rational>();
 
